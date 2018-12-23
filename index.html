@@ -60,12 +60,12 @@
     </header>
     <div class="entry">
       
-        <p>在一些時候我們會遇到 VM 磁碟空間不足，又因為一些原因不方便將 VM 關機進行調整的窘境，其實只要透過下面的方法就可以達到：</p>
-<h2 id="前提"><a href="#前提" class="headerlink" title="前提"></a>前提</h2><ul>
-<li>使用可調整 Raw Disk 磁碟大小的 VM 軟體如 VMWare, VirtualBox, Proxmox 等</li>
-<li>VM 虛擬的磁碟控制器為 SCSI 介面</li>
+        <p>在一些時候我們會遇到 VM 磁碟空間不足，又因為一些原因不方便將 VM 關機進行調整的窘境，其實只要透過下面的方法就可以達到不用關機調整磁碟空間：</p>
+<h2 id="注意事項"><a href="#注意事項" class="headerlink" title="注意事項"></a>注意事項</h2><ul>
+<li>需使用可調整 Raw Disk 磁碟大小的 VM 軟體如 VMWare, VirtualBox, Proxmox 等</li>
+<li>VM 虛擬的磁碟控制器必須是 SCSI 介面</li>
 </ul>
-<h2 id="方法"><a href="#方法" class="headerlink" title="方法"></a>方法</h2><ol>
+<h2 id="操作步驟"><a href="#操作步驟" class="headerlink" title="操作步驟"></a>操作步驟</h2><ol>
 <li>擴充 Raw Disk 磁碟大小</li>
 <li>在 Guest Linux 中找到磁碟所在的 SCSI 匯流排位置 (找到如下面的 2:0:0:0)</li>
 </ol>

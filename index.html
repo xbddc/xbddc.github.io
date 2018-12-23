@@ -50,6 +50,59 @@
     <header>
       
         <div class="icon"></div>
+        <time datetime="2018-12-23T15:26:38.839Z"><a href="/2018/12/23/expand-space-without-rebooting-vm/">2018-12-23</a></time>
+      
+      
+  
+    <h1 class="title"><a href="/2018/12/23/expand-space-without-rebooting-vm/">不關機調整 VM 磁碟空間</a></h1>
+  
+
+    </header>
+    <div class="entry">
+      
+        <p>在一些時候我們會遇到 VM 磁碟空間不足，又因為一些原因不方便將 VM 關機進行調整的窘境，其實只要透過下面的方法就可以達到：</p>
+<h2 id="前提"><a href="#前提" class="headerlink" title="前提"></a>前提</h2><ul>
+<li>使用可調整 Raw Disk 磁碟大小的 VM 軟體如 VMWare, VirtualBox, Proxmox 等</li>
+<li>VM 虛擬的磁碟控制器為 SCSI 介面</li>
+</ul>
+<h2 id="方法"><a href="#方法" class="headerlink" title="方法"></a>方法</h2><ol>
+<li>擴充 Raw Disk 磁碟大小</li>
+<li>在 Guest Linux 中找到磁碟所在的 SCSI 匯流排位置 (找到如下面的 2:0:0:0)</li>
+</ol>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># dmesg | grep sda</span></span><br><span class="line">[    4.312047] sd 2:0:0:0: [sda] 41943040 512-byte logical blocks: (21.5 GB/20.0 GiB)</span><br><span class="line">[    4.313812] sd 2:0:0:0: [sda] Write Protect is off</span><br><span class="line">[    4.313817] sd 2:0:0:0: [sda] Mode Sense: 00 3a 00 00</span><br></pre></td></tr></table></figure>
+<ol start="3">
+<li>對該 SCSI 位置做 rescan</li>
+</ol>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">echo</span> 1 &gt; /sys/class/scsi_device/2\:0\:0\:0/device/rescan</span><br></pre></td></tr></table></figure>
+<ol start="4">
+<li>進行新磁區的分割, 如 fdisk 或 LVM 的 pv, vg, lv 系列指令</li>
+</ol>
+<p>使用 LVM 管理磁碟的話應該不會有太大問題，但若是採用調大 fdisk 中分割區大小的方式，編輯完儲存後還要記得執行 partprobe &amp;&amp; resize2fs /dev/sdaX 才會見效。</p>
+<h2 id="References"><a href="#References" class="headerlink" title="References"></a>References</h2><ul>
+<li><a href="https://communities.vmware.com/thread/492752" target="_blank" rel="noopener">https://communities.vmware.com/thread/492752</a></li>
+</ul>
+
+      
+    </div>
+    <footer>
+      
+        
+        
+      
+      <div class="clearfix"></div>
+    </footer>
+  </div>
+</article>
+
+
+
+
+  <article class="post">
+  
+  <div class="post-content">
+    <header>
+      
+        <div class="icon"></div>
         <time datetime="2018-12-23T13:59:15.212Z"><a href="/2018/12/23/docker-rolling-update/">2018-12-23</a></time>
       
       

@@ -1,0 +1,285 @@
+<!DOCTYPE HTML>
+<html>
+<head><meta name="generator" content="Hexo 3.8.0">
+  <meta charset="utf-8">
+  
+  <title>Notebook</title>
+  <meta name="author" content="xbddc">
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+
+  
+  <meta property="og:site_name" content="Notebook">
+
+  
+    <meta property="og:image" content="">
+  
+
+  <link href="/favicon.png" rel="icon">
+  <link rel="alternate" href="/atom.xml" title="Notebook" type="application/atom+xml">
+  <link rel="stylesheet" href="/css/style.css" media="screen" type="text/css">
+  <!--[if lt IE 9]><script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script><![endif]-->
+  
+
+</head>
+</html>
+
+<body>
+  <header id="header" class="inner"><div class="alignleft">
+  <h1><a href="/">Notebook</a></h1>
+  <h2><a href="/"></a></h2>
+</div>
+<nav id="main-nav" class="alignright">
+  <ul>
+    
+      <li><a href="/">Home</a></li>
+    
+      <li><a href="/archives">Archives</a></li>
+    
+  </ul>
+  <div class="clearfix"></div>
+</nav>
+<div class="clearfix"></div>
+</header>
+  <div id="content" class="inner">
+    <div id="main-col" class="alignleft"><div id="wrapper">
+  <article class="post">
+  
+  <div class="post-content">
+    <header>
+      
+        <div class="icon"></div>
+        <time datetime="2018-12-23T13:59:15.212Z"><a href="/2018/12/23/docker-rolling-update/">2018-12-23</a></time>
+      
+      
+  
+    <h1 class="title"><a href="/2018/12/23/docker-rolling-update/">對 Docker swarm 中 service 進行 rolling update</a></h1>
+  
+
+    </header>
+    <div class="entry">
+      
+        <p>當在 Docker swarm 群集中有更新版本的 docker image 要部署時，我們可以透過以下步驟進行：</p>
+<ol>
+<li>在 service 建立時，指定 update-delay 時間，讓 Docker 依照這個間隔依序下載新的 image 並部署(重啟 container)：</li>
+</ol>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">docker service create \</span><br><span class="line">  --replicas 3 \</span><br><span class="line">  --name redis \</span><br><span class="line">  --update-delay 10s \</span><br><span class="line">  redis:3.0.6</span><br></pre></td></tr></table></figure>
+<ol start="2">
+<li>部署新版本時，使用 <code>update</code> 指令開始 rolling update：</li>
+</ol>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">docker service update --image redis:3.0.7 redis</span><br></pre></td></tr></table></figure>
+<ol start="3">
+<li>透過 <code>inspect</code> 與 <code>ps</code> 指令觀察其更新情形：</li>
+</ol>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">docker service inspect --pretty redis</span><br></pre></td></tr></table></figure>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">ID:             0u6a4s31ybk7yw2wyvtikmu50</span><br><span class="line">Name:           redis</span><br><span class="line">Service Mode:   Replicated</span><br><span class="line"> Replicas:      3</span><br><span class="line">Placement:</span><br><span class="line"> Strategy:      Spread</span><br><span class="line">UpdateConfig:</span><br><span class="line"> Parallelism:   1</span><br><span class="line"> Delay:         10s</span><br><span class="line">ContainerSpec:</span><br><span class="line"> Image:         redis:3.0.7</span><br><span class="line">Resources:</span><br><span class="line">Endpoint Mode:  vip</span><br></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">docker service ps redis</span><br></pre></td></tr></table></figure>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">NAME                                   IMAGE        NODE       DESIRED STATE  CURRENT STATE            ERROR</span><br><span class="line">redis.1.dos1zffgeofhagnve8w864fco      redis:3.0.7  worker1    Running        Running 37 seconds</span><br><span class="line"> \_ redis.1.88rdo6pa52ki8oqx6dogf04fh  redis:3.0.6  worker2    Shutdown       Shutdown 56 seconds ago</span><br><span class="line">redis.2.9l3i4j85517skba5o7tn5m8g0      redis:3.0.7  worker2    Running        Running About a minute</span><br><span class="line"> \_ redis.2.66k185wilg8ele7ntu8f6nj6i  redis:3.0.6  worker1    Shutdown       Shutdown 2 minutes ago</span><br><span class="line">redis.3.egiuiqpzrdbxks3wxgn8qib1g      redis:3.0.7  worker1    Running        Running 48 seconds</span><br><span class="line"> \_ redis.3.ctzktfddb2tepkr45qcmqln04  redis:3.0.6  mmanager1  Shutdown       Shutdown 2 minutes ago</span><br></pre></td></tr></table></figure>
+<h2 id="References"><a href="#References" class="headerlink" title="References"></a>References</h2><ul>
+<li><a href="https://docs.docker.com/engine/swarm/swarm-tutorial/rolling-update/" target="_blank" rel="noopener">https://docs.docker.com/engine/swarm/swarm-tutorial/rolling-update/</a></li>
+</ul>
+
+      
+    </div>
+    <footer>
+      
+        
+        
+      
+      <div class="clearfix"></div>
+    </footer>
+  </div>
+</article>
+
+
+
+
+  <article class="post">
+  
+  <div class="post-content">
+    <header>
+      
+        <div class="icon"></div>
+        <time datetime="2018-12-23T12:32:54.301Z"><a href="/2018/12/23/docker-proxy/">2018-12-23</a></time>
+      
+      
+  
+    <h1 class="title"><a href="/2018/12/23/docker-proxy/">在 Docker 使用 Proxy 設定方法</a></h1>
+  
+
+    </header>
+    <div class="entry">
+      
+        <p>前陣子因為工作上遇到線路品質問題，需要透過 Proxy 來 pull 各 Docker image。網路上提供了幾種方法，記錄一下：</p>
+<h2 id="Docker-17-06-之前"><a href="#Docker-17-06-之前" class="headerlink" title="Docker 17.06 之前"></a>Docker 17.06 之前</h2><p>使用環境變數來設定 Proxy server 資訊：</p>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Dockerfile example</th>
+<th>docker run Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>HTTP_PROXY</td>
+<td>ENV HTTP_PROXY “<a href="http://127.0.0.1:3001&quot;" target="_blank" rel="noopener">http://127.0.0.1:3001&quot;</a></td>
+<td>–env HTTP_PROXY=”<a href="http://127.0.0.1:3001&quot;" target="_blank" rel="noopener">http://127.0.0.1:3001&quot;</a></td>
+</tr>
+<tr>
+<td>HTTPS_PROXY</td>
+<td>ENV HTTPS_PROXY “<a href="https://127.0.0.1:3001&quot;" target="_blank" rel="noopener">https://127.0.0.1:3001&quot;</a></td>
+<td>–env HTTPS_PROXY=”<a href="https://127.0.0.1:3001&quot;" target="_blank" rel="noopener">https://127.0.0.1:3001&quot;</a></td>
+</tr>
+<tr>
+<td>FTP_PROXY</td>
+<td>ENV FTP_PROXY “<a href="ftp://127.0.0.1:3001&quot;" target="_blank" rel="noopener">ftp://127.0.0.1:3001&quot;</a></td>
+<td>–env FTP_PROXY=”<a href="ftp://127.0.0.1:3001&quot;" target="_blank" rel="noopener">ftp://127.0.0.1:3001&quot;</a></td>
+</tr>
+<tr>
+<td>NO_PROXY</td>
+<td>ENV NO_PROXY “*.test.example.com,.example2.com”</td>
+<td>–env NO_PROXY=”*.test.example.com,.example2.com”</td>
+</tr>
+</tbody>
+</table>
+<h2 id="Docker-17-07-以後"><a href="#Docker-17-07-以後" class="headerlink" title="Docker 17.07 以後"></a>Docker 17.07 以後</h2><p>於全域的 <code>/etc/docker/config.json</code> 或家目錄的 <code>~/.docker/config.json</code> 中加入：</p>
+<figure class="highlight json"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">&#123;</span><br><span class="line">  <span class="attr">"proxies"</span>: &#123;</span><br><span class="line">    <span class="attr">"default"</span>: &#123;</span><br><span class="line">      <span class="attr">"httpProxy"</span>: <span class="string">"http://127.0.0.1:3001"</span>,</span><br><span class="line">      <span class="attr">"httpsProxy"</span>: <span class="string">"https://127.0.0.1:3001"</span>,</span><br><span class="line">      <span class="attr">"ftpProxy"</span>: <span class="string">"ftp://127.0.0.1:3001"</span>,</span><br><span class="line">      <span class="attr">"noProxy"</span>: <span class="string">"*.test.example.com,.example2.com"</span></span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>然後重啟 Docker 服務：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo service docker restart</span><br></pre></td></tr></table></figure>
+<h2 id="Docker-是透過-SysVinit-管理的"><a href="#Docker-是透過-SysVinit-管理的" class="headerlink" title="Docker 是透過 SysVinit 管理的"></a>Docker 是透過 SysVinit 管理的</h2><p>若 docker daemon 是透過 SysVinit 來管理的話 (Ubuntu 14)，可以使用下列方式修改。</p>
+<p>編輯 <code>/etc/default/docker</code>，加入：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">export</span> http_proxy=<span class="string">"http://127.0.0.1:3001"</span></span><br><span class="line"><span class="built_in">export</span> https_proxy=<span class="string">"https://127.0.0.1:3001"</span></span><br><span class="line"><span class="built_in">export</span> ftp_proxy=<span class="string">"ftp://127.0.0.1:3001"</span></span><br></pre></td></tr></table></figure>
+<p>然後重啟 Docker 服務：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo service docker restart</span><br></pre></td></tr></table></figure>
+<h2 id="Docker-是透過-Systemd-管理的"><a href="#Docker-是透過-Systemd-管理的" class="headerlink" title="Docker 是透過 Systemd 管理的"></a>Docker 是透過 Systemd 管理的</h2><p>若 docker daemon 是透過 Systemd 來管理的話 (Ubuntu 16/18)，也可以使用下列方式修改。</p>
+<p>新增或編輯 <code>/etc/systemd/system/docker.service.d/http-proxy.conf</code>，加入：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">[Service]</span><br><span class="line">Environment=<span class="string">"HTTP_PROXY=http://127.0.0.1:3001/"</span></span><br></pre></td></tr></table></figure>
+<p>新增或編輯 <code>/etc/systemd/system/docker.service.d/https-proxy.conf</code>，加入：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">[Service]</span><br><span class="line">Environment=<span class="string">"HTTPS_PROXY=https://127.0.0.1:3001/"</span></span><br></pre></td></tr></table></figure>
+<p>新增或編輯 <code>/etc/systemd/system/docker.service.d/ftp-proxy.conf</code>，加入：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">[Service]</span><br><span class="line">Environment=<span class="string">"FTP_PROXY=ftp://127.0.0.1:3001/"</span></span><br></pre></td></tr></table></figure>
+<p>然後重啟 Docker 服務：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">sudo systemctl daemon-reload</span><br><span class="line">sudo systemctl restart docker</span><br></pre></td></tr></table></figure>
+<h2 id="References"><a href="#References" class="headerlink" title="References"></a>References</h2><ul>
+<li><a href="https://docs.docker.com/config/daemon/systemd/#httphttps-proxy" target="_blank" rel="noopener">https://docs.docker.com/config/daemon/systemd/#httphttps-proxy</a></li>
+<li><a href="https://docs.docker.com/network/proxy/" target="_blank" rel="noopener">https://docs.docker.com/network/proxy/</a></li>
+<li><a href="https://stackoverflow.com/questions/26550360/docker-ubuntu-behind-proxy" target="_blank" rel="noopener">https://stackoverflow.com/questions/26550360/docker-ubuntu-behind-proxy</a></li>
+</ul>
+
+      
+    </div>
+    <footer>
+      
+        
+        
+      
+      <div class="clearfix"></div>
+    </footer>
+  </div>
+</article>
+
+
+
+
+  <article class="post">
+  
+  <div class="post-content">
+    <header>
+      
+        <div class="icon"></div>
+        <time datetime="2018-12-22T15:38:19.123Z"><a href="/2018/12/22/twelve-factor/">2018-12-22</a></time>
+      
+      
+  
+    <h1 class="title"><a href="/2018/12/22/twelve-factor/">The Twelve-Factor</a></h1>
+  
+
+    </header>
+    <div class="entry">
+      
+        <p><a href="https://12factor.net/" target="_blank" rel="noopener">The Twelve-Factor</a> 是由 <a href="https://heroku.com" target="_blank" rel="noopener">Heroku</a> Founder 同時也是 CTO 的 <a href="http://about.adamwiggins.com" target="_blank" rel="noopener">Adam Wiggins</a> 所提出。他在參與了數以百計的軟體開發部署，加上他在 Heroku 間接見證數十萬應用軟體發展後，所構築出的理論。綜合了關於 SaaS 所有的經驗與智慧，提出理想中最佳實踐 (Best practices) 的準則。其中特別關注應用軟體如何保持良性成長，開發者之間如何進行有效的程式碼協作。</p>
+<h2 id="摘要"><a href="#摘要" class="headerlink" title="摘要"></a>摘要</h2><p>在現在的時代，軟體一般會以服務的形式來交付，稱為 <code>軟體及服務</code> 或 <code>SaaS (Software-as-a-service)</code>，Twelve-Factor 為建構 SaaS 應用服務關注以下這些面向：</p>
+<ul>
+<li>使用自動化的標準流程，從而使新的開發者以最少的學習成本加入這個專案</li>
+<li>和作業系統之間儘可能的劃清界限，在各個系統中提供最大的可移植性</li>
+<li>適合部署在現代的雲端運算平台，從而在伺服器與系統管理方面節省資源</li>
+<li>將開發環境和生產環境的差異降至最低，並使用持續交付實施敏捷開發</li>
+<li>可以在工具、架構和開發流程不發生明顯變化的前提下達成擴充</li>
+</ul>
+<p>這套理論適用於任意語言和後端服務（資料庫、訊息佇列、記憶體快取等）開發的應用服務。</p>
+<h2 id="準則"><a href="#準則" class="headerlink" title="準則"></a>準則</h2><ol>
+<li><p><a href="https://12factor.net/codebase" target="_blank" rel="noopener">基準程式碼：一份版本管理的基準程式碼，多份部署</a><br>Codebase - One codebase tracked in revision control, many deploys</p>
+</li>
+<li><p><a href="https://12factor.net/dependencies" target="_blank" rel="noopener">相依性：外顯示地宣告相依關係</a><br>Dependencies - Explicitly declare and isolate dependencies</p>
+</li>
+<li><p><a href="https://12factor.net/config" target="_blank" rel="noopener">設定檔：在環境中儲存設定檔</a><br>Config - Store config in the environment</p>
+</li>
+<li><p><a href="https://12factor.net/backing-services" target="_blank" rel="noopener">後端服務：把後端服務當作附加資源</a><br>Backing services - Treat backing services as attached resources</p>
+</li>
+<li><p><a href="https://12factor.net/build-release-run" target="_blank" rel="noopener">建置，發佈，執行：嚴格分離建置和執行</a><br>Build, release, run - Strictly separate build and run stages</p>
+</li>
+<li><p><a href="https://12factor.net/processes" target="_blank" rel="noopener">程序：以一個或多個無狀態的程序執行應用程式</a><br>Processes - Execute the app as one or more stateless processes</p>
+</li>
+<li><p><a href="https://12factor.net/port-binding" target="_blank" rel="noopener">通訊埠綁定：使用通訊埠綁定方式提供服務</a><br>Port binding - Export services via port binding</p>
+</li>
+<li><p><a href="https://12factor.net/concurrency" target="_blank" rel="noopener">併發：透過程序模型進行擴充</a><br>Concurrency - Scale out via the process model</p>
+</li>
+<li><p><a href="https://12factor.net/disposability" target="_blank" rel="noopener">可拋棄性：快速啟動和優雅終止可最大化穩健性</a><br>Disposability - Maximize robustness with fast startup and graceful shutdown</p>
+</li>
+<li><p><a href="https://12factor.net/dev-prod-parity" target="_blank" rel="noopener">開發環境與線上環境等價：儘可能的保持開發，預發佈，線上環境相同</a><br>Dev/prod parity - Keep development, staging, and production as similar as possible</p>
+</li>
+<li><p><a href="https://12factor.net/logs" target="_blank" rel="noopener">日誌：把日誌當作事件流</a><br>Logs - Treat logs as event streams</p>
+</li>
+<li><p><a href="https://12factor.net/admin-processes" target="_blank" rel="noopener">管理程序：後台管理任務當作一次性程序執行</a><br>Admin processes - Run admin/management tasks as one-off processes</p>
+</li>
+</ol>
+
+      
+    </div>
+    <footer>
+      
+        
+        
+      
+      <div class="clearfix"></div>
+    </footer>
+  </div>
+</article>
+
+
+
+
+
+<nav id="pagination">
+  
+  
+  <div class="clearfix"></div>
+</nav></div></div>
+    <div class="clearfix"></div>
+  </div>
+  <footer id="footer" class="inner"><div class="alignleft">
+  
+  &copy; 2018 xbddc
+  
+  <p>Theme by <a href="https://caisiduo.xyz" target="_blank">LightOne</a></p>
+</div>
+<div class="clearfix"></div></footer>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+<script src="/js/jquery.imagesloaded.min.js"></script>
+<script src="/js/gallery.js"></script>
+
+
+
+
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.css" media="screen" type="text/css">
+<script src="/fancybox/jquery.fancybox.pack.js"></script>
+<script type="text/javascript">
+(function($){
+  $('.fancybox').fancybox();
+})(jQuery);
+</script>
+
+</body>
+</html>

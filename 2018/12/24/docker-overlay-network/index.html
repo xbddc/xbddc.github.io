@@ -1,0 +1,190 @@
+<!DOCTYPE HTML>
+<html>
+<head><meta name="generator" content="Hexo 3.8.0">
+  <meta charset="utf-8">
+  
+  <title>跨主機間的 Docker overlay network (使用 etcd) | Notebook</title>
+  <meta name="author" content="xbddc">
+  
+  <meta name="description" content="若要使不同主機間的 Docker 中的 container 能互相溝通 (讓他們在同個網路底下) 有幾種方式，陸續跟大家分享一下。
+透過 etcd早先在 swarm 還沒那麼完善時，透過 etcd 分散式的 key/value 儲存服務，儲存並同步各 Docker node 資訊，這是當時比較常見的">
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+
+  <meta property="og:title" content="跨主機間的 Docker overlay network (使用 etcd)">
+  <meta property="og:site_name" content="Notebook">
+
+  
+    <meta property="og:image" content="">
+  
+
+  <link href="/favicon.png" rel="icon">
+  <link rel="alternate" href="/atom.xml" title="Notebook" type="application/atom+xml">
+  <link rel="stylesheet" href="/css/style.css" media="screen" type="text/css">
+  <!--[if lt IE 9]><script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script><![endif]-->
+  
+
+</head>
+</html>
+
+<body>
+  <header id="header" class="inner"><div class="alignleft">
+  <h1><a href="/">Notebook</a></h1>
+  <h2><a href="/"></a></h2>
+</div>
+<nav id="main-nav" class="alignright">
+  <ul>
+    
+      <li><a href="/">Home</a></li>
+    
+      <li><a href="/archives">Archives</a></li>
+    
+  </ul>
+  <div class="clearfix"></div>
+</nav>
+<div class="clearfix"></div>
+</header>
+  <div id="content" class="inner">
+    <div id="main-col" class="alignleft"><div id="wrapper"><article class="post">
+  
+  <div class="post-content">
+    <header>
+      
+        <div class="icon"></div>
+        <time datetime="2018-12-24T14:49:58.475Z"><a href="/2018/12/24/docker-overlay-network/">2018-12-24</a></time>
+      
+      
+  
+    <h1 class="title">跨主機間的 Docker overlay network (使用 etcd)</h1>
+  
+
+    </header>
+    <div class="entry">
+      
+        <p>若要使不同主機間的 Docker 中的 container 能互相溝通 (讓他們在同個網路底下) 有幾種方式，陸續跟大家分享一下。</p>
+<h2 id="透過-etcd"><a href="#透過-etcd" class="headerlink" title="透過 etcd"></a>透過 etcd</h2><p>早先在 swarm 還沒那麼完善時，透過 etcd 分散式的 key/value 儲存服務，儲存並同步各 Docker node 資訊，這是當時比較常見的做法。假設現在有兩個 Docker node，<code>sx01</code> 與 <code>sx02</code>：</p>
+<table>
+<thead>
+<tr>
+<th>hostname</th>
+<th>ip addr</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>sx01</td>
+<td>10.1.1.70</td>
+</tr>
+<tr>
+<td>sx02</td>
+<td>10.1.1.71</td>
+</tr>
+</tbody>
+</table>
+<p>我們先分別在 <code>sx01</code>, <code>sx02</code> 安裝 etcd</p>
+<ul>
+<li><code>sx01</code></li>
+</ul>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">wget https://github.com/coreos/etcd/releases/download/v3.0.12/etcd-v3.0.12-linux-amd64.tar.gz</span><br><span class="line">tar zxvf etcd-v3.0.12-linux-amd64.tar.gz</span><br><span class="line"><span class="built_in">cd</span> etcd-v3.0.12-linux-amd64</span><br><span class="line">nohup ./etcd --name sx01 --initial-advertise-peer-urls http://10.1.1.70:2380 \</span><br><span class="line">        --listen-peer-urls http://10.1.1.70:2380 \</span><br><span class="line">        --listen-client-urls http://10.1.1.70:2379,http://127.0.0.1:2379 \</span><br><span class="line">        --advertise-client-urls http://10.1.1.70:2379 \</span><br><span class="line">        --initial-cluster-token etcd-cluster \</span><br><span class="line">        --initial-cluster sx01=http://10.1.1.70:2380,sx02=http://10.1.1.71:2380 \</span><br><span class="line">        --initial-cluster-state new &amp;</span><br></pre></td></tr></table></figure>
+<ul>
+<li><code>sx02</code></li>
+</ul>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">wget https://github.com/coreos/etcd/releases/download/v3.0.12/etcd-v3.0.12-linux-amd64.tar.gz</span><br><span class="line">tar zxvf etcd-v3.0.12-linux-amd64.tar.gz</span><br><span class="line"><span class="built_in">cd</span> etcd-v3.0.12-linux-amd64</span><br><span class="line">nohup ./etcd --name sx02 --initial-advertise-peer-urls http://10.1.1.71:2380 \</span><br><span class="line">        --listen-peer-urls http://10.1.1.71:2380 \</span><br><span class="line">        --listen-client-urls http://10.1.1.71:2379,http://127.0.0.1:2379 \</span><br><span class="line">        --advertise-client-urls http://10.1.1.71:2379 \</span><br><span class="line">        --initial-cluster-token etcd-cluster \</span><br><span class="line">        --initial-cluster sx01=http://10.1.1.70:2380,sx02=http://10.1.1.71:2380 \</span><br><span class="line">        --initial-cluster-state new &amp;</span><br></pre></td></tr></table></figure>
+<p>透過在 <code>sx02</code> 輸入 <code>./etcdctl cluster-health</code> 我們可以確認 etcd 服務有正確啟動：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">member 21eca106efe4caee is healthy: got healthy result from http://10.1.1.70:2379</span><br><span class="line">member 8614974c83d1cc6d is healthy: got healthy result from http://10.1.1.71:2379</span><br></pre></td></tr></table></figure>
+<p>接著設定 dockerd 讓它在啟動時能夠與 etcd 服務連接，藉此與其他 Docker 同步網路資訊與容器狀態：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">systemctl edit docker</span><br></pre></td></tr></table></figure>
+<p>會自動開啟編輯器，在當中填入</p>
+<ul>
+<li><code>sx01</code></li>
+</ul>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">[Service]</span><br><span class="line">ExecStart=</span><br><span class="line">ExecStart=/usr/bin/dockerd -H tcp://0.0.0.0:2375 -H unix:///var/run/docker.sock --cluster-store=etcd://10.1.1.70:2379 --cluster-advertise=10.1.1.70:2375</span><br></pre></td></tr></table></figure>
+<ul>
+<li><code>sx02</code></li>
+</ul>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">[Service]</span><br><span class="line">ExecStart=</span><br><span class="line">ExecStart=/usr/bin/dockerd -H tcp://0.0.0.0:2375 -H unix:///var/run/docker.sock --cluster-store=etcd://10.1.1.71:2379 --cluster-advertise=10.1.1.71:2375</span><br></pre></td></tr></table></figure>
+<p>接著將各自的 Docker 服務重啟</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">systemctl restart docker</span><br></pre></td></tr></table></figure>
+<p>這時我們嘗試在 <code>sx01</code> 建立一個名為 <code>test_net</code> 的 overlay 網路：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">docker network create -d overlay test_net</span><br></pre></td></tr></table></figure>
+<p>同時在 <code>sx02</code> 我們可以發現 <code>test_net</code> 也已自動出現：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># docker network ls</span></span><br><span class="line">NETWORK ID          NAME                DRIVER              SCOPE</span><br><span class="line">c9947d4c3669        bridge              bridge              <span class="built_in">local</span></span><br><span class="line">3d430f3338a2        test_net            overlay             global</span><br><span class="line">fa5168034de1        host                host                <span class="built_in">local</span></span><br><span class="line">c2ca34abec2a        none                null                <span class="built_in">local</span></span><br></pre></td></tr></table></figure>
+<p>再來只要我們在任意 Docker node 執行 container 時加上 <code>--net test_net</code> 參數，即可為 container 增加一互相連通的網路介面 (eth1)。</p>
+<h2 id="透過-Docker-swarm"><a href="#透過-Docker-swarm" class="headerlink" title="透過 Docker swarm"></a>透過 Docker swarm</h2><h2 id="透過-Flannel"><a href="#透過-Flannel" class="headerlink" title="透過 Flannel"></a>透過 Flannel</h2><h2 id="References"><a href="#References" class="headerlink" title="References"></a>References</h2><ul>
+<li><a href="https://docker-k8s-lab.readthedocs.io/en/latest/docker/docker-etcd.html" target="_blank" rel="noopener">https://docker-k8s-lab.readthedocs.io/en/latest/docker/docker-etcd.html</a></li>
+</ul>
+
+      
+    </div>
+    <footer>
+      
+        
+        
+  
+  <div class="tags">
+    <a href="/tags/docker/">docker</a>, <a href="/tags/swarm/">swarm</a>, <a href="/tags/etcd/">etcd</a>, <a href="/tags/flannel/">flannel</a>
+  </div>
+
+        
+      
+      <div class="clearfix"></div>
+    </footer>
+  </div>
+</article>
+
+
+<section id="comment">
+  <h1 class="title">Comments</h1>
+
+  
+</section>
+
+</div></div>
+    <aside id="sidebar" class="alignright">
+  
+
+  
+<div class="widget tag">
+  <h3 class="title">Tags</h3>
+  <ul class="entry">
+  
+    <li><a href="/tags/development/">development</a><small>1</small></li>
+  
+    <li><a href="/tags/docker/">docker</a><small>3</small></li>
+  
+    <li><a href="/tags/etcd/">etcd</a><small>1</small></li>
+  
+    <li><a href="/tags/flannel/">flannel</a><small>1</small></li>
+  
+    <li><a href="/tags/linux/">linux</a><small>1</small></li>
+  
+    <li><a href="/tags/proxy/">proxy</a><small>1</small></li>
+  
+    <li><a href="/tags/saas/">saas</a><small>1</small></li>
+  
+    <li><a href="/tags/swarm/">swarm</a><small>2</small></li>
+  
+    <li><a href="/tags/vm/">vm</a><small>1</small></li>
+  
+  </ul>
+</div>
+
+</aside>
+    <div class="clearfix"></div>
+  </div>
+  <footer id="footer" class="inner"><div class="alignleft">
+  
+  &copy; 2018 xbddc
+  
+</div>
+<div class="clearfix"></div></footer>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+<script src="/js/jquery.imagesloaded.min.js"></script>
+<script src="/js/gallery.js"></script>
+
+
+
+
+</body>
+</html>

@@ -10,7 +10,8 @@
 
 在 service 建立時，指定 update-delay 時間，讓 Docker 依照這個間隔依序下載新的 image 並部署(重啟 container)：
 
-12345docke">
+
+如果要拉 priv">
   
   
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
@@ -69,6 +70,9 @@
 <ol>
 <li>在 service 建立時，指定 update-delay 時間，讓 Docker 依照這個間隔依序下載新的 image 並部署(重啟 container)：</li>
 </ol>
+<blockquote>
+<p>如果要拉 private docker registry 的話，先 docker login 後傳遞 –with-registry-auth 參數在下面的指令</p>
+</blockquote>
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">docker service create \</span><br><span class="line">  --replicas 3 \</span><br><span class="line">  --name redis \</span><br><span class="line">  --update-delay 10s \</span><br><span class="line">  redis:3.0.6</span><br></pre></td></tr></table></figure>
 <ol start="2">
 <li>部署新版本時，使用 <code>update</code> 指令開始 rolling update：</li>

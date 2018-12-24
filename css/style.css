@@ -311,13 +311,13 @@ article .entry table th {
   text-align: left;
 }
 article .entry blockquote {
-  border-top: 1px solid #ddd;
-  border-bottom: 1px solid #ddd;
-  font-style: italic;
-  font-family: "Georgia", serif;
-  font-size: 1.2em;
-  padding: 0 30px 15px;
-  text-align: center;
+  font-size: 1em;
+  padding: 12px;
+  text-align: left;
+  background: #ffeeba;
+}
+article .entry blockquote p {
+  margin: 0;
 }
 article .entry blockquote footer {
   border-top: none;
@@ -345,7 +345,7 @@ article .entry code {
   border-radius: 3px;
 }
 article .entry pre {
-  background: #eee;
+  background: #f4f5f6;
   border: 1px solid #ddd;
   margin-top: 15px;
   overflow: auto;
@@ -700,10 +700,8 @@ article footer .addthis iframe {
   color: #258fb8;
 }
 figure.highlight {
-  background: #eee;
-  border: 1px solid #ddd;
+  background: #f4f5f6;
   margin-top: 15px;
-  padding: 7px 15px;
   border-radius: 2px;
   text-shadow: 0 0 1px #fff;
   line-height: 1.6;
@@ -730,6 +728,7 @@ figure.highlight table {
   border-spacing: 0;
 }
 figure.highlight .gutter {
+  display: none;
   color: #999;
   padding-right: 15px;
   border-right: 1px solid #ddd;
@@ -737,7 +736,7 @@ figure.highlight .gutter {
 }
 figure.highlight .code {
   padding-left: 15px;
-  border-left: 1px solid #fff;
+  border-left: 1px solid #ddd;
   color: #666;
 }
 figure.highlight .line {

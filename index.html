@@ -50,7 +50,356 @@
     <header>
       
         <div class="icon"></div>
-        <time datetime="2018-12-24T14:49:58.475Z"><a href="/2018/12/24/docker-overlay-network-etcd/">2018-12-24</a></time>
+        <time datetime="2019-05-10T07:58:51.000Z"><a href="/2019/05/10/video-tag-in-safari/">2019-05-10</a></time>
+      
+      
+  
+    <h1 class="title"><a href="/2019/05/10/video-tag-in-safari/">Safari 中使用 video tag 的注意事項</a></h1>
+  
+
+    </header>
+    <div class="entry">
+      
+        <p>前幾天遇到一個有趣的 issue，在不管是 Chrome, Firefox 等瀏覽器都能播放的 mp4 檔案，到了 Safari 卻顯示 Invalid Video 的情形。研究了一下發現其實存在不只一種原因，所以記錄一下：</p>
+<h2 id="HTTP-的-partial-content-協定-1"><a href="#HTTP-的-partial-content-協定-1" class="headerlink" title="HTTP 的 partial content 協定[^1]"></a>HTTP 的 partial content 協定[^1]</h2><p>現代的瀏覽器皆支援發送帶有 <code>Range: bytes=n-m</code> 的 header，在支援的伺服器端則回傳 <code>206 Partial Content</code> response 並帶上指定片段的檔案內容做為 payload，藉此在播放器中達到 playback seeking 功能。而 Safari 在這方面處理的邏輯與其他瀏覽器有一點點不同：若 response 所帶的 payload 超過 request 指定的長度，會被將之當成是 livestream 播放，然後馬上就噴掉了 …。</p>
+<p>Safari 期望的行為：</p>
+<ol>
+<li>以 <code>Range: bytes=0-1</code> 只要一個 byte 先問一次，得到 <code>Content-Range: bytes 0-1/500000</code>，得知總長度 <code>500000</code></li>
+<li>取回前 16K <code>Range: bytes=0-16383</code></li>
+<li>再問最後段的 16K <code>Range: bytes=483616-499999</code></li>
+<li>然後再取中間沒下載的部分：<code>Range: bytes=16384-483615</code></li>
+</ol>
+<p>如果任何一步出差錯了就直接 fail，尤其是 response 多送少送都不行。最近踩到的問題就是後端多送了更多的 data，在第一步就爆了 …。</p>
+<h2 id="MP4-中-h-264-宣告的-profile-level-與媒體內容格式不相符"><a href="#MP4-中-h-264-宣告的-profile-level-與媒體內容格式不相符" class="headerlink" title="MP4 中 h.264 宣告的 profile level 與媒體內容格式不相符"></a>MP4 中 h.264 宣告的 profile level 與媒體內容格式不相符</h2><p>如果壓制出來的 mp4 檔案中 profile 標明的 level[^2] 錯誤，也會導致 Safari (QuickTime) 採用不合適的 decoder 進行解碼，也會噴掉。如宣告 level=2.2 (即只支援到 720x480@15)，但實際影片解析度卻是 1280x720@30 時的這種情形。</p>
+<h2 id="References"><a href="#References" class="headerlink" title="References"></a>References</h2><ul>
+<li>[^1]: <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/206" target="_blank" rel="noopener">https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/206</a></li>
+<li>[^2]: <a href="https://en.wikipedia.org/wiki/H.264/MPEG-4_AVC#Levels" target="_blank" rel="noopener">https://en.wikipedia.org/wiki/H.264/MPEG-4_AVC#Levels</a></li>
+</ul>
+
+      
+    </div>
+    <footer>
+      
+        
+        
+      
+      <div class="clearfix"></div>
+    </footer>
+  </div>
+</article>
+
+
+
+
+  <article class="post">
+  
+  <div class="post-content">
+    <header>
+      
+        <div class="icon"></div>
+        <time datetime="2019-01-31T15:10:00.000Z"><a href="/2019/01/31/expand-gpt-without-rebooting-vm/">2019-01-31</a></time>
+      
+      
+  
+    <h1 class="title"><a href="/2019/01/31/expand-gpt-without-rebooting-vm/">不關機擴充 VM 的 GPT 磁碟格式空間</a></h1>
+  
+
+    </header>
+    <div class="entry">
+      
+        <p>請搭配 <a href="https://xbddc.github.io/2018/12/21/expand-space-without-rebooting-vm/">https://xbddc.github.io/2018/12/21/expand-space-without-rebooting-vm/</a> 服用。</p>
+<h2 id="操作步驟"><a href="#操作步驟" class="headerlink" title="操作步驟"></a>操作步驟</h2><ol>
+<li>擴充 Raw Disk 磁碟大小</li>
+<li>確認 Linux 已偵測到變更</li>
+</ol>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"># dmesg | tail</span><br><span class="line">[3362536.189973] virtio_blk virtio1: new size: 71720960 512-byte logical blocks (36.7 GB/34.2 GiB)</span><br><span class="line">[3362536.189984] vda: detected capacity change from 19541262336 to 36721131520</span><br><span class="line">[3362866.358221] EXT4-fs (vda1): resizing filesystem from 4742395 to 8936699 blocks</span><br><span class="line">[3362866.389273] EXT4-fs (vda1): resized filesystem to 8936699</span><br></pre></td></tr></table></figure>
+<ol start="3">
+<li>找到要 resize 的磁碟編號。注意只能是位於最末段的磁碟，如下的 vda1：</li>
+</ol>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"># df</span><br><span class="line">Filesystem     1K-blocks     Used Available Use% Mounted on</span><br><span class="line">...</span><br><span class="line">/dev/vda1       18318068 16648976   1652708  91% /</span><br><span class="line">...</span><br></pre></td></tr></table></figure>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"># sgdisk -p /dev/vda</span><br><span class="line">Disk /dev/vda: 38166527 sectors, 18.1 GiB</span><br><span class="line">Sector size (logical/physical): 512/512 bytes</span><br><span class="line">Disk identifier (GUID): 877716F7-31D0-4D56-A1ED-4D566EFE418E</span><br><span class="line">Partition table holds up to 128 entries</span><br><span class="line">Main partition table begins at sector 2 and ends at sector 33</span><br><span class="line">First usable sector is 34, last usable sector is 38166494</span><br><span class="line">Partitions will be aligned on 2048-sector boundaries</span><br><span class="line">Total free space is 2014 sectors (1007.0 KiB)</span><br><span class="line"></span><br><span class="line">Number  Start (sector)    End (sector)  Size       Code  Name</span><br><span class="line">   1          227328        38166494   18.0 GiB    8300</span><br><span class="line">  14            2048           10239   4.0 MiB     EF02</span><br><span class="line">  15           10240          227327   106.0 MiB   EF00</span><br></pre></td></tr></table></figure>
+<ol start="4">
+<li>刪除並重新建立第 1 個分割區，並更新 partition table 取得新的設定資訊</li>
+</ol>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"># sgdisk -d 1 /dev/vda </span><br><span class="line"># sgdisk -N 1 /dev/vda </span><br><span class="line"># partprobe /dev/vda</span><br></pre></td></tr></table></figure>
+<ol start="5">
+<li>最後就執行 <code>resize2fs</code> 調整 ext2 大小：</li>
+</ol>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"># resize2fs /dev/vda1</span><br><span class="line">resize2fs 1.44.1 (24-Mar-2018)</span><br><span class="line">Filesystem at /dev/vda1 is mounted on /; on-line resizing required</span><br><span class="line">old_desc_blocks = 3, new_desc_blocks = 5</span><br><span class="line">The filesystem on /dev/vda1 is now 8936699 (4k) blocks long.</span><br></pre></td></tr></table></figure>
+<ol start="6">
+<li>確認一下結果，可以發現使用率從原本的 91% 降至 49%：</li>
+</ol>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"># df</span><br><span class="line">Filesystem     1K-blocks     Used Available Use% Mounted on</span><br><span class="line">...</span><br><span class="line">/dev/vda1       34578052 16649988  17911680  49% /</span><br><span class="line">...</span><br></pre></td></tr></table></figure>
+<p>這樣就完成啦！</p>
+<h2 id="References"><a href="#References" class="headerlink" title="References"></a>References</h2><ul>
+<li><a href="https://superuser.com/questions/660309/live-resize-of-a-gpt-partition-on-linux" target="_blank" rel="noopener">https://superuser.com/questions/660309/live-resize-of-a-gpt-partition-on-linux</a></li>
+</ul>
+
+      
+    </div>
+    <footer>
+      
+        
+        
+      
+      <div class="clearfix"></div>
+    </footer>
+  </div>
+</article>
+
+
+
+
+  <article class="post">
+  
+  <div class="post-content">
+    <header>
+      
+        <div class="icon"></div>
+        <time datetime="2019-01-18T05:14:57.000Z"><a href="/2019/01/18/iterate-ip-in-bash/">2019-01-18</a></time>
+      
+      
+  
+    <h1 class="title"><a href="/2019/01/18/iterate-ip-in-bash/">在 Bash 中列舉 IP 清單</a></h1>
+  
+
+    </header>
+    <div class="entry">
+      
+        <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">printf</span> -v ip_list <span class="string">'%s,'</span> 10.1.&#123;1..255&#125;.&#123;1..255&#125;</span><br><span class="line">ip_list=<span class="variable">$&#123;ip_list%,&#125;</span> <span class="comment"># 去除最後的 ,</span></span><br></pre></td></tr></table></figure>
+<p>最近在 shell 環境時常需要設定 <code>http_proxy</code> 或 <code>https_proxy</code> 來透過 proxy server 進行連線，若有需要排除的 ip，則設定 <code>no_proxy</code> 這個環境變數來排除，這時如果要排除整個 subnet，就只能一個一個 IP 列舉了，使用上面的方法就可以輕鬆辦到。最後再 assign 給 <code>no_proxy</code> 即可：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">export</span> no_proxy=<span class="variable">$ip_list</span></span><br></pre></td></tr></table></figure>
+
+      
+    </div>
+    <footer>
+      
+        
+        
+      
+      <div class="clearfix"></div>
+    </footer>
+  </div>
+</article>
+
+
+
+
+  <article class="post">
+  
+  <div class="post-content">
+    <header>
+      
+        <div class="icon"></div>
+        <time datetime="2019-01-07T14:00:00.000Z"><a href="/2019/01/07/docker-compose-change-subnet/">2019-01-07</a></time>
+      
+      
+  
+    <h1 class="title"><a href="/2019/01/07/docker-compose-change-subnet/">指定 docker-compose 選用的 subnet</a></h1>
+  
+
+    </header>
+    <div class="entry">
+      
+        <p>最近用到一些以 <code>docker-compose</code> 做為啟動服務方式的專案時，不小心因為它建立的 subnet 與我鏈路上的 private ip subnet 衝突，導致我就與 swarm 叢集斷線。於是上網找了幾個方案來避免用到這個 subnet：</p>
+<h2 id="方案一：修改-host-routing-table"><a href="#方案一：修改-host-routing-table" class="headerlink" title="方案一：修改 host routing table"></a>方案一：修改 host routing table</h2><p>一個簡單的方法，透過佔用某個 subnet，讓 <code>docker-compose</code> 無法選擇去使用它：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 跳過 172.19.0.0/16</span></span><br><span class="line">route add -net 172.19.0.0/16 gw 172.16.0.1</span><br></pre></td></tr></table></figure>
+<h2 id="方案二：修改-docker-compose-yml"><a href="#方案二：修改-docker-compose-yml" class="headerlink" title="方案二：修改 docker-compose.yml"></a>方案二：修改 docker-compose.yml</h2><p>透過在 <code>docker-compose.yml</code> 中指定欲使用的 subnet 設定來達到 (需 docker-compose.yml 標記 VERSION 3 以上)</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="string">version</span> <span class="string">'3'</span></span><br><span class="line"><span class="attr">services:</span></span><br><span class="line"><span class="attr">  nginx:</span></span><br><span class="line">    <span class="string">...</span></span><br><span class="line"><span class="attr">    networks:</span></span><br><span class="line"><span class="attr">      default:</span></span><br><span class="line"></span><br><span class="line"><span class="attr">networks:</span></span><br><span class="line"><span class="attr">  default:</span></span><br><span class="line"><span class="attr">    driver:</span> <span class="string">bridge</span></span><br><span class="line"><span class="attr">    ipam:</span></span><br><span class="line"><span class="attr">      driver:</span> <span class="string">default</span></span><br><span class="line"><span class="attr">      config:</span></span><br><span class="line">        <span class="comment"># 指定使用 172.28.0.0/16</span></span><br><span class="line"><span class="attr">        - subnet:</span> <span class="number">172.28</span><span class="number">.0</span><span class="number">.0</span><span class="string">/16</span></span><br></pre></td></tr></table></figure>
+<h2 id="References"><a href="#References" class="headerlink" title="References"></a>References</h2><ul>
+<li><a href="https://docs.docker.com/compose/compose-file/#ipam" target="_blank" rel="noopener">https://docs.docker.com/compose/compose-file/#ipam</a></li>
+<li><a href="https://github.com/docker/compose/issues/4336" target="_blank" rel="noopener">https://github.com/docker/compose/issues/4336</a></li>
+</ul>
+
+      
+    </div>
+    <footer>
+      
+        
+        
+      
+      <div class="clearfix"></div>
+    </footer>
+  </div>
+</article>
+
+
+
+
+  <article class="post">
+  
+  <div class="post-content">
+    <header>
+      
+        <div class="icon"></div>
+        <time datetime="2019-01-05T14:00:00.000Z"><a href="/2019/01/05/docker-overlay-network-swarm/">2019-01-05</a></time>
+      
+      
+  
+    <h1 class="title"><a href="/2019/01/05/docker-overlay-network-swarm/">跨主機間的 Docker overlay network (使用 swarm)</a></h1>
+  
+
+    </header>
+    <div class="entry">
+      
+        <p>若要使不同主機間的 Docker 中的 container 能互相溝通 (讓他們在同個網路底下) 有幾種方式，今天介紹一個最簡單的方式。</p>
+<h2 id="透過-Docker-Swarm"><a href="#透過-Docker-Swarm" class="headerlink" title="透過 Docker Swarm"></a>透過 Docker Swarm</h2><p>隨著現在 Docker Swarm 越來越發達與普及，很多人是直接透過 Swarm 來做 container orchestration 的工具，做為跨主機的 container 群集。只要我們將各 Docker node 加入 Swarm 群集後，在 Swarm manager 角色的主機建立 overlay 網路，再以 docker service 指令集來建立服務，這些服務的容器間即可相互溝通。</p>
+<p>建立 overlay 網路：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">docker network create -d overlay --scope swarm my-network</span><br></pre></td></tr></table></figure>
+<p>透過 Docker swarm 在各 Docker node 部署同一 image 測試：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">docker service create --name <span class="built_in">test</span>-service --network my-network bash sleep 180</span><br><span class="line">docker service scale <span class="built_in">test</span>-service=2</span><br></pre></td></tr></table></figure>
+<p>各自從 container 取得 ip：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># sx01</span></span><br><span class="line">docker <span class="built_in">exec</span> -it `docker ps | grep <span class="built_in">test</span>-service | cut -d\  -f1` ifconfig</span><br><span class="line">eth0      Link encap:Ethernet  HWaddr 02:42:0A:00:00:38</span><br><span class="line">          inet addr:10.0.0.56  Bcast:10.0.0.255  Mask:255.255.255.0</span><br><span class="line">          UP BROADCAST RUNNING MULTICAST  MTU:1450  Metric:1</span><br><span class="line">          ...</span><br><span class="line"></span><br><span class="line"><span class="comment"># sx02</span></span><br><span class="line">docker <span class="built_in">exec</span> -it `docker ps | grep <span class="built_in">test</span>-service | cut -d\  -f1` ifconfig</span><br><span class="line">eth0      Link encap:Ethernet  HWaddr 02:42:0A:00:00:41</span><br><span class="line">          inet addr:10.0.0.52  Bcast:10.0.0.255  Mask:255.255.255.0</span><br><span class="line">          UP BROADCAST RUNNING MULTICAST  MTU:1450  Metric:1</span><br><span class="line">          ...</span><br></pre></td></tr></table></figure>
+<p>各自 container 可互相 <code>ping</code> 到對方：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># sx01</span></span><br><span class="line">docker <span class="built_in">exec</span> -it `docker ps | grep <span class="built_in">test</span>-service | cut -d\  -f1` ping 10.0.0.52</span><br><span class="line">PING 10.0.0.52 (10.0.0.52): 56 data bytes</span><br><span class="line">64 bytes from 10.0.0.52: seq=0 ttl=64 time=0.351 ms</span><br><span class="line">64 bytes from 10.0.0.52: seq=1 ttl=64 time=0.367 ms</span><br><span class="line">64 bytes from 10.0.0.52: seq=2 ttl=64 time=0.258 ms</span><br><span class="line">64 bytes from 10.0.0.52: seq=3 ttl=64 time=0.304 ms</span><br><span class="line"></span><br><span class="line"><span class="comment"># sx02</span></span><br><span class="line">docker <span class="built_in">exec</span> -it `docker ps | grep <span class="built_in">test</span>-service | cut -d\  -f1` ping 10.0.0.56</span><br><span class="line">PING 10.0.0.56 (10.0.0.56): 56 data bytes</span><br><span class="line">64 bytes from 10.0.0.56: seq=0 ttl=64 time=0.338 ms</span><br><span class="line">64 bytes from 10.0.0.56: seq=1 ttl=64 time=0.325 ms</span><br><span class="line">64 bytes from 10.0.0.56: seq=2 ttl=64 time=0.306 ms</span><br><span class="line">64 bytes from 10.0.0.56: seq=3 ttl=64 time=0.212 ms</span><br></pre></td></tr></table></figure>
+<p>收工！</p>
+
+      
+    </div>
+    <footer>
+      
+        
+        
+      
+      <div class="clearfix"></div>
+    </footer>
+  </div>
+</article>
+
+
+
+
+  <article class="post">
+  
+  <div class="post-content">
+    <header>
+      
+        <div class="icon"></div>
+        <time datetime="2018-12-26T14:00:00.000Z"><a href="/2018/12/26/pppoe-settings/">2018-12-26</a></time>
+      
+      
+  
+    <h1 class="title"><a href="/2018/12/26/pppoe-settings/">Ubuntu 上的 PPPoE 自動重撥</a></h1>
+  
+
+    </header>
+    <div class="entry">
+      
+        <p>今天早上 Hinet 線路有點問題，恢復後發現每個 VM 中的 <code>pppd</code> 噴了訊息之後都沒有自動重連：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">Dec 26 10:15:53 mx01 pppd[778]: No response to 4 echo-requests</span><br><span class="line">Dec 26 10:15:53 mx01 pppd[778]: Serial link appears to be disconnected.</span><br><span class="line">Dec 26 10:15:53 mx01 pppd[778]: Connect time 2224.5 minutes.</span><br><span class="line">Dec 26 10:15:53 mx01 pppd[778]: Sent 137161190 bytes, received 206597813 bytes.</span><br><span class="line">Dec 26 10:15:53 mx01 pppd[778]: restoring old default route to eth0 [10.1.1.1]</span><br><span class="line">Dec 26 10:15:53 mx01 systemd-networkd[668]: ppp0: Lost carrier</span><br><span class="line">Dec 26 10:15:59 mx01 pppd[778]: Connection terminated.</span><br><span class="line">Dec 26 10:15:59 mx01 pppd[778]: Sent PADT</span><br><span class="line">Dec 26 10:15:59 mx01 pppd[778]: Modem hangup</span><br></pre></td></tr></table></figure>
+<p>研究一下設定檔發現有些地方需要做點調整，方法如下。</p>
+<p>編輯 <code>/etc/ppp/options</code>，修改幾個項目：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">lcp-echo-interval 20</span><br><span class="line">lcp-echo-failure 40000</span><br><span class="line">maxfail 0</span><br><span class="line">holdoff 10</span><br><span class="line">persist</span><br></pre></td></tr></table></figure>
+<p>完成後重新啟動 <code>pppd</code> 才會生效。</p>
+
+      
+    </div>
+    <footer>
+      
+        
+        
+      
+      <div class="clearfix"></div>
+    </footer>
+  </div>
+</article>
+
+
+
+
+  <article class="post">
+  
+  <div class="post-content">
+    <header>
+      
+        <div class="icon"></div>
+        <time datetime="2018-12-25T07:00:00.000Z"><a href="/2018/12/25/docker-overlay-network-flannel/">2018-12-25</a></time>
+      
+      
+  
+    <h1 class="title"><a href="/2018/12/25/docker-overlay-network-flannel/">跨主機間的 Docker overlay network (使用 flannel)</a></h1>
+  
+
+    </header>
+    <div class="entry">
+      
+        <p>接續之前的主題，這裡說說另一種能讓不同主機間的 Docker container 互相溝通 (讓他們在同個網路底下) 的方式。</p>
+<h2 id="透過-flannel"><a href="#透過-flannel" class="headerlink" title="透過 flannel"></a>透過 flannel</h2><p><code>flannel</code> 最早是由 CoreOS 公司為 Kubernetes 所設計的 IPv4 Layer 3 網路服務，透過以 agent 的形式運作在各 Docker node 中，將節點資訊透過 Kubernetes API 或 etcd 同步到其他節點，並操作本地 Linux Kernel 的 VXLAN (layer 3) 或 host-gw (layer 2) 網路設定，也可配合如 AWS, GCE, AliCloud 的架構使用。</p>
+<p>因我們沒有部署 Kubernetes，故下面我們需要先準備 etcd 分散式儲存服務：</p>
+<table>
+<thead>
+<tr>
+<th>hostname</th>
+<th>ip addr</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>sx01</td>
+<td>10.1.1.70</td>
+</tr>
+<tr>
+<td>sx02</td>
+<td>10.1.1.71</td>
+</tr>
+</tbody>
+</table>
+<p>我們先分別在 <code>sx01</code>, <code>sx02</code> 安裝 etcd</p>
+<ul>
+<li><code>sx01</code></li>
+</ul>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">wget https://github.com/coreos/etcd/releases/download/v3.0.12/etcd-v3.0.12-linux-amd64.tar.gz</span><br><span class="line">tar zxvf etcd-v3.0.12-linux-amd64.tar.gz</span><br><span class="line"><span class="built_in">cd</span> etcd-v3.0.12-linux-amd64</span><br><span class="line">nohup ./etcd --name sx01 --initial-advertise-peer-urls http://10.1.1.70:2380 \</span><br><span class="line">        --listen-peer-urls http://10.1.1.70:2380 \</span><br><span class="line">        --listen-client-urls http://10.1.1.70:2379,http://127.0.0.1:2379 \</span><br><span class="line">        --advertise-client-urls http://10.1.1.70:2379 \</span><br><span class="line">        --initial-cluster-token etcd-cluster \</span><br><span class="line">        --initial-cluster sx01=http://10.1.1.70:2380,sx02=http://10.1.1.71:2380 \</span><br><span class="line">        --initial-cluster-state new &amp;</span><br></pre></td></tr></table></figure>
+<ul>
+<li><code>sx02</code></li>
+</ul>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">wget https://github.com/coreos/etcd/releases/download/v3.0.12/etcd-v3.0.12-linux-amd64.tar.gz</span><br><span class="line">tar zxvf etcd-v3.0.12-linux-amd64.tar.gz</span><br><span class="line"><span class="built_in">cd</span> etcd-v3.0.12-linux-amd64</span><br><span class="line">nohup ./etcd --name sx02 --initial-advertise-peer-urls http://10.1.1.71:2380 \</span><br><span class="line">        --listen-peer-urls http://10.1.1.71:2380 \</span><br><span class="line">        --listen-client-urls http://10.1.1.71:2379,http://127.0.0.1:2379 \</span><br><span class="line">        --advertise-client-urls http://10.1.1.71:2379 \</span><br><span class="line">        --initial-cluster-token etcd-cluster \</span><br><span class="line">        --initial-cluster sx01=http://10.1.1.70:2380,sx02=http://10.1.1.71:2380 \</span><br><span class="line">        --initial-cluster-state new &amp;</span><br></pre></td></tr></table></figure>
+<p>透過在 <code>sx02</code> 輸入 <code>./etcdctl cluster-health</code> 我們可以確認 etcd 服務有正確啟動：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">member 21eca106efe4caee is healthy: got healthy result from http://10.1.1.70:2379</span><br><span class="line">member 8614974c83d1cc6d is healthy: got healthy result from http://10.1.1.71:2379</span><br></pre></td></tr></table></figure>
+<p>接著在各節點下載 <code>flanneld</code>：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">wget https://github.com/coreos/flannel/releases/download/v0.10.0/flanneld-amd64 &amp;&amp; chmod +x flanneld-amd64</span><br></pre></td></tr></table></figure>
+<p>在 <code>sx01</code> 我們編輯 flannel 的網路設定檔 <code>flannel-network-config.json</code>：</p>
+<figure class="highlight json"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">&#123;</span><br><span class="line">    <span class="attr">"Network"</span>: <span class="string">"10.0.0.0/8"</span>,</span><br><span class="line">    <span class="attr">"SubnetLen"</span>: <span class="number">20</span>,</span><br><span class="line">    <span class="attr">"SubnetMin"</span>: <span class="string">"10.10.0.0"</span>,</span><br><span class="line">    <span class="attr">"SubnetMax"</span>: <span class="string">"10.99.0.0"</span>,</span><br><span class="line">    <span class="attr">"Backend"</span>: &#123;</span><br><span class="line">        <span class="attr">"Type"</span>: <span class="string">"vxlan"</span>,</span><br><span class="line">        <span class="attr">"VNI"</span>: <span class="number">100</span>,</span><br><span class="line">        <span class="attr">"Port"</span>: <span class="number">8472</span></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>透過 <code>etcdctl</code> 發佈到 etcd 中：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">./etcdctl <span class="built_in">set</span> /coreos.com/network/config &lt; flannel-network-config.json</span><br></pre></td></tr></table></figure>
+<p>接著可以透過下面指令在 <code>sx02</code> 中看到一樣的內容：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">./etcdctl get /coreos.com/network/config</span><br></pre></td></tr></table></figure>
+<p>我們現在可以將各 Docker node 的 <code>flanneld</code> 跑起來了，它會為我們新增一 flannel.100 的網路介面，可透過 <code>ifconfig</code> 看到：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># sx01</span></span><br><span class="line">nohup sudo ./flanneld-amd64 -iface=10.1.1.70 &amp;</span><br><span class="line"></span><br><span class="line"><span class="comment"># sx02</span></span><br><span class="line">nohup sudo ./flanneld-amd64 -iface=10.1.1.71 &amp;</span><br></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#ifconfig flannel.100</span></span><br><span class="line">flannel.100 Link encap:Ethernet  HWaddr 92:70:f1:94:9a:f8</span><br><span class="line">          inet addr:10.15.48.0  Bcast:0.0.0.0  Mask:255.255.255.255</span><br><span class="line">          inet6 addr: fe80::9070:f1ff:fe94:9af8/64 Scope:Link</span><br><span class="line">          UP BROADCAST RUNNING MULTICAST  MTU:1450  Metric:1</span><br><span class="line">          RX packets:114 errors:0 dropped:0 overruns:0 frame:0</span><br><span class="line">          TX packets:113 errors:0 dropped:31 overruns:0 carrier:0</span><br><span class="line">          collisions:0 txqueuelen:0</span><br><span class="line">          RX bytes:9428 (9.4 KB)  TX bytes:9372 (9.3 KB)</span><br></pre></td></tr></table></figure>
+<p>最後我們只要將各自 <code>dockerd</code> 的啟動 script 修改一下，讓它可以使用 flannel 做為網路的底層服務：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">systemctl edit docker</span><br></pre></td></tr></table></figure>
+<p>會自動開啟編輯器，在當中填入</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">[Service]</span><br><span class="line">EnvironmentFile=/run/flannel/subnet.env</span><br><span class="line">ExecStart=</span><br><span class="line">ExecStart=/usr/bin/dockerd -H tcp://0.0.0.0:2375 -H unix:///var/run/docker.sock --bip=<span class="variable">$&#123;FLANNEL_SUBNET&#125;</span> --mtu=<span class="variable">$&#123;FLANNEL_MTU&#125;</span></span><br></pre></td></tr></table></figure>
+<p>再重啟 Docker 服務就完成了</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">systemctl restart docker</span><br></pre></td></tr></table></figure>
+<p>測試看看，應可正確 ping 到對方：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># sx01</span></span><br><span class="line">docker run -it --rm bash sh -c <span class="string">'ifconfig eth0; sleep 60'</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># sx02</span></span><br><span class="line">docker run -it --rm bash ping [上面看到的 ip]</span><br></pre></td></tr></table></figure>
+<h2 id="References"><a href="#References" class="headerlink" title="References"></a>References</h2><ul>
+<li><a href="https://docker-k8s-lab.readthedocs.io/en/latest/docker/docker-flannel.html" target="_blank" rel="noopener">https://docker-k8s-lab.readthedocs.io/en/latest/docker/docker-flannel.html</a></li>
+</ul>
+
+      
+    </div>
+    <footer>
+      
+        
+        
+      
+      <div class="clearfix"></div>
+    </footer>
+  </div>
+</article>
+
+
+
+
+  <article class="post">
+  
+  <div class="post-content">
+    <header>
+      
+        <div class="icon"></div>
+        <time datetime="2018-12-24T14:00:00.000Z"><a href="/2018/12/24/docker-overlay-network-etcd/">2018-12-24</a></time>
       
       
   
@@ -109,7 +458,7 @@
 <p>同時在 <code>sx02</code> 我們可以發現 <code>test_net</code> 也已自動出現：</p>
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># docker network ls</span></span><br><span class="line">NETWORK ID          NAME                DRIVER              SCOPE</span><br><span class="line">c9947d4c3669        bridge              bridge              <span class="built_in">local</span></span><br><span class="line">3d430f3338a2        test_net            overlay             global</span><br><span class="line">fa5168034de1        host                host                <span class="built_in">local</span></span><br><span class="line">c2ca34abec2a        none                null                <span class="built_in">local</span></span><br></pre></td></tr></table></figure>
 <p>再來只要我們在任意 Docker node 執行 container 時加上 <code>--net test_net</code> 參數，即可為 container 增加一互相連通的網路介面 (eth1)。</p>
-<h2 id="透過-Docker-swarm"><a href="#透過-Docker-swarm" class="headerlink" title="透過 Docker swarm"></a>透過 Docker swarm</h2><h2 id="透過-Flannel"><a href="#透過-Flannel" class="headerlink" title="透過 Flannel"></a>透過 Flannel</h2><h2 id="References"><a href="#References" class="headerlink" title="References"></a>References</h2><ul>
+<h2 id="References"><a href="#References" class="headerlink" title="References"></a>References</h2><ul>
 <li><a href="https://docker-k8s-lab.readthedocs.io/en/latest/docker/docker-etcd.html" target="_blank" rel="noopener">https://docker-k8s-lab.readthedocs.io/en/latest/docker/docker-etcd.html</a></li>
 </ul>
 
@@ -134,114 +483,7 @@
     <header>
       
         <div class="icon"></div>
-        <time datetime="2018-12-23T15:26:38.839Z"><a href="/2018/12/23/expand-space-without-rebooting-vm/">2018-12-23</a></time>
-      
-      
-  
-    <h1 class="title"><a href="/2018/12/23/expand-space-without-rebooting-vm/">不關機調整 VM 磁碟空間</a></h1>
-  
-
-    </header>
-    <div class="entry">
-      
-        <p>在一些時候我們會遇到 VM 磁碟空間不足，又因為一些原因不方便將 VM 關機進行調整的窘境，其實只要透過下面的方法就可以達到不用關機調整磁碟空間：</p>
-<h2 id="注意事項"><a href="#注意事項" class="headerlink" title="注意事項"></a>注意事項</h2><ul>
-<li>需使用可調整 Raw Disk 磁碟大小的 VM 軟體如 VMWare, VirtualBox, Proxmox 等</li>
-<li>VM 虛擬的磁碟控制器必須是 SCSI 介面</li>
-</ul>
-<h2 id="操作步驟"><a href="#操作步驟" class="headerlink" title="操作步驟"></a>操作步驟</h2><ol>
-<li>擴充 Raw Disk 磁碟大小</li>
-<li>在 Guest Linux 中找到磁碟所在的 SCSI 匯流排位置 (找到如下面的 2:0:0:0)</li>
-</ol>
-<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># dmesg | grep sda</span></span><br><span class="line">[    4.312047] sd 2:0:0:0: [sda] 41943040 512-byte logical blocks: (21.5 GB/20.0 GiB)</span><br><span class="line">[    4.313812] sd 2:0:0:0: [sda] Write Protect is off</span><br><span class="line">[    4.313817] sd 2:0:0:0: [sda] Mode Sense: 00 3a 00 00</span><br></pre></td></tr></table></figure>
-<ol start="3">
-<li>對該 SCSI 位置做 rescan</li>
-</ol>
-<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">echo</span> 1 &gt; /sys/class/scsi_device/2\:0\:0\:0/device/rescan</span><br></pre></td></tr></table></figure>
-<ol start="4">
-<li>進行新磁區的分割, 如 fdisk 或 LVM 的 pv, vg, lv 系列指令</li>
-</ol>
-<p>使用 LVM 管理磁碟的話應該不會有太大問題，但若是採用調大 fdisk 中分割區大小的方式，編輯完儲存後還要記得執行 partprobe &amp;&amp; resize2fs /dev/sdaX 才會見效。</p>
-<h2 id="References"><a href="#References" class="headerlink" title="References"></a>References</h2><ul>
-<li><a href="https://communities.vmware.com/thread/492752" target="_blank" rel="noopener">https://communities.vmware.com/thread/492752</a></li>
-</ul>
-
-      
-    </div>
-    <footer>
-      
-        
-        
-      
-      <div class="clearfix"></div>
-    </footer>
-  </div>
-</article>
-
-
-
-
-  <article class="post">
-  
-  <div class="post-content">
-    <header>
-      
-        <div class="icon"></div>
-        <time datetime="2018-12-23T13:59:15.212Z"><a href="/2018/12/23/docker-rolling-update/">2018-12-23</a></time>
-      
-      
-  
-    <h1 class="title"><a href="/2018/12/23/docker-rolling-update/">對 Docker swarm 中 service 進行 rolling update</a></h1>
-  
-
-    </header>
-    <div class="entry">
-      
-        <p>當在 Docker swarm 群集中有更新版本的 docker image 要部署時，我們可以透過以下步驟進行：</p>
-<ol>
-<li>在 service 建立時，指定 update-delay 時間，讓 Docker 依照這個間隔依序下載新的 image 並部署(重啟 container)：</li>
-</ol>
-<blockquote>
-<p>如果要拉 private docker registry 的話，先 docker login 後傳遞 –with-registry-auth 參數在下面的指令</p>
-</blockquote>
-<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">docker service create \</span><br><span class="line">  --replicas 3 \</span><br><span class="line">  --name redis \</span><br><span class="line">  --update-delay 10s \</span><br><span class="line">  redis:3.0.6</span><br></pre></td></tr></table></figure>
-<ol start="2">
-<li>部署新版本時，使用 <code>update</code> 指令開始 rolling update：</li>
-</ol>
-<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">docker service update --image redis:3.0.7 redis</span><br></pre></td></tr></table></figure>
-<ol start="3">
-<li>透過 <code>inspect</code> 與 <code>ps</code> 指令觀察其更新情形：</li>
-</ol>
-<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">docker service inspect --pretty redis</span><br></pre></td></tr></table></figure>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">ID:             0u6a4s31ybk7yw2wyvtikmu50</span><br><span class="line">Name:           redis</span><br><span class="line">Service Mode:   Replicated</span><br><span class="line"> Replicas:      3</span><br><span class="line">Placement:</span><br><span class="line"> Strategy:      Spread</span><br><span class="line">UpdateConfig:</span><br><span class="line"> Parallelism:   1</span><br><span class="line"> Delay:         10s</span><br><span class="line">ContainerSpec:</span><br><span class="line"> Image:         redis:3.0.7</span><br><span class="line">Resources:</span><br><span class="line">Endpoint Mode:  vip</span><br></pre></td></tr></table></figure>
-<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">docker service ps redis</span><br></pre></td></tr></table></figure>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">NAME                                   IMAGE        NODE       DESIRED STATE  CURRENT STATE            ERROR</span><br><span class="line">redis.1.dos1zffgeofhagnve8w864fco      redis:3.0.7  worker1    Running        Running 37 seconds</span><br><span class="line"> \_ redis.1.88rdo6pa52ki8oqx6dogf04fh  redis:3.0.6  worker2    Shutdown       Shutdown 56 seconds ago</span><br><span class="line">redis.2.9l3i4j85517skba5o7tn5m8g0      redis:3.0.7  worker2    Running        Running About a minute</span><br><span class="line"> \_ redis.2.66k185wilg8ele7ntu8f6nj6i  redis:3.0.6  worker1    Shutdown       Shutdown 2 minutes ago</span><br><span class="line">redis.3.egiuiqpzrdbxks3wxgn8qib1g      redis:3.0.7  worker1    Running        Running 48 seconds</span><br><span class="line"> \_ redis.3.ctzktfddb2tepkr45qcmqln04  redis:3.0.6  mmanager1  Shutdown       Shutdown 2 minutes ago</span><br></pre></td></tr></table></figure>
-<h2 id="References"><a href="#References" class="headerlink" title="References"></a>References</h2><ul>
-<li><a href="https://docs.docker.com/engine/swarm/swarm-tutorial/rolling-update/" target="_blank" rel="noopener">https://docs.docker.com/engine/swarm/swarm-tutorial/rolling-update/</a></li>
-</ul>
-
-      
-    </div>
-    <footer>
-      
-        
-        
-      
-      <div class="clearfix"></div>
-    </footer>
-  </div>
-</article>
-
-
-
-
-  <article class="post">
-  
-  <div class="post-content">
-    <header>
-      
-        <div class="icon"></div>
-        <time datetime="2018-12-23T12:32:54.301Z"><a href="/2018/12/23/docker-proxy/">2018-12-23</a></time>
+        <time datetime="2018-12-23T14:00:00.000Z"><a href="/2018/12/23/docker-proxy/">2018-12-23</a></time>
       
       
   
@@ -329,52 +571,38 @@
     <header>
       
         <div class="icon"></div>
-        <time datetime="2018-12-22T15:38:19.123Z"><a href="/2018/12/22/twelve-factor/">2018-12-22</a></time>
+        <time datetime="2018-12-22T13:00:00.000Z"><a href="/2018/12/22/docker-rolling-update/">2018-12-22</a></time>
       
       
   
-    <h1 class="title"><a href="/2018/12/22/twelve-factor/">The Twelve-Factor</a></h1>
+    <h1 class="title"><a href="/2018/12/22/docker-rolling-update/">對 Docker swarm 中 service 進行 rolling update</a></h1>
   
 
     </header>
     <div class="entry">
       
-        <p><a href="https://12factor.net/" target="_blank" rel="noopener">The Twelve-Factor</a> 是由 <a href="https://heroku.com" target="_blank" rel="noopener">Heroku</a> Founder 同時也是 CTO 的 <a href="http://about.adamwiggins.com" target="_blank" rel="noopener">Adam Wiggins</a> 所提出。他在參與了數以百計的軟體開發部署，加上他在 Heroku 間接見證數十萬應用軟體發展後，所構築出的理論。綜合了關於 SaaS 所有的經驗與智慧，提出理想中最佳實踐 (Best practices) 的準則。其中特別關注應用軟體如何保持良性成長，開發者之間如何進行有效的程式碼協作。</p>
-<h2 id="摘要"><a href="#摘要" class="headerlink" title="摘要"></a>摘要</h2><p>在現在的時代，軟體一般會以服務的形式來交付，稱為 <code>軟體及服務</code> 或 <code>SaaS (Software-as-a-service)</code>，Twelve-Factor 為建構 SaaS 應用服務關注以下這些面向：</p>
-<ul>
-<li>使用自動化的標準流程，從而使新的開發者以最少的學習成本加入這個專案</li>
-<li>和作業系統之間儘可能的劃清界限，在各個系統中提供最大的可移植性</li>
-<li>適合部署在現代的雲端運算平台，從而在伺服器與系統管理方面節省資源</li>
-<li>將開發環境和生產環境的差異降至最低，並使用持續交付實施敏捷開發</li>
-<li>可以在工具、架構和開發流程不發生明顯變化的前提下達成擴充</li>
-</ul>
-<p>這套理論適用於任意語言和後端服務（資料庫、訊息佇列、記憶體快取等）開發的應用服務。</p>
-<h2 id="準則"><a href="#準則" class="headerlink" title="準則"></a>準則</h2><ol>
-<li><p><a href="https://12factor.net/codebase" target="_blank" rel="noopener">基準程式碼：一份版本管理的基準程式碼，多份部署</a><br>Codebase - One codebase tracked in revision control, many deploys</p>
-</li>
-<li><p><a href="https://12factor.net/dependencies" target="_blank" rel="noopener">相依性：外顯示地宣告相依關係</a><br>Dependencies - Explicitly declare and isolate dependencies</p>
-</li>
-<li><p><a href="https://12factor.net/config" target="_blank" rel="noopener">設定檔：在環境中儲存設定檔</a><br>Config - Store config in the environment</p>
-</li>
-<li><p><a href="https://12factor.net/backing-services" target="_blank" rel="noopener">後端服務：把後端服務當作附加資源</a><br>Backing services - Treat backing services as attached resources</p>
-</li>
-<li><p><a href="https://12factor.net/build-release-run" target="_blank" rel="noopener">建置，發佈，執行：嚴格分離建置和執行</a><br>Build, release, run - Strictly separate build and run stages</p>
-</li>
-<li><p><a href="https://12factor.net/processes" target="_blank" rel="noopener">程序：以一個或多個無狀態的程序執行應用程式</a><br>Processes - Execute the app as one or more stateless processes</p>
-</li>
-<li><p><a href="https://12factor.net/port-binding" target="_blank" rel="noopener">通訊埠綁定：使用通訊埠綁定方式提供服務</a><br>Port binding - Export services via port binding</p>
-</li>
-<li><p><a href="https://12factor.net/concurrency" target="_blank" rel="noopener">併發：透過程序模型進行擴充</a><br>Concurrency - Scale out via the process model</p>
-</li>
-<li><p><a href="https://12factor.net/disposability" target="_blank" rel="noopener">可拋棄性：快速啟動和優雅終止可最大化穩健性</a><br>Disposability - Maximize robustness with fast startup and graceful shutdown</p>
-</li>
-<li><p><a href="https://12factor.net/dev-prod-parity" target="_blank" rel="noopener">開發環境與線上環境等價：儘可能的保持開發，預發佈，線上環境相同</a><br>Dev/prod parity - Keep development, staging, and production as similar as possible</p>
-</li>
-<li><p><a href="https://12factor.net/logs" target="_blank" rel="noopener">日誌：把日誌當作事件流</a><br>Logs - Treat logs as event streams</p>
-</li>
-<li><p><a href="https://12factor.net/admin-processes" target="_blank" rel="noopener">管理程序：後台管理任務當作一次性程序執行</a><br>Admin processes - Run admin/management tasks as one-off processes</p>
-</li>
+        <p>當在 Docker swarm 群集中有更新版本的 docker image 要部署時，我們可以透過以下步驟進行：</p>
+<ol>
+<li>在 service 建立時，指定 update-delay 時間，讓 Docker 依照這個間隔依序下載新的 image 並部署(重啟 container)：</li>
 </ol>
+<blockquote>
+<p>如果要拉 private docker registry 的話，先 docker login 後傳遞 –with-registry-auth 參數在下面的指令</p>
+</blockquote>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">docker service create \</span><br><span class="line">  --replicas 3 \</span><br><span class="line">  --name redis \</span><br><span class="line">  --update-delay 10s \</span><br><span class="line">  redis:3.0.6</span><br></pre></td></tr></table></figure>
+<ol start="2">
+<li>部署新版本時，使用 <code>update</code> 指令開始 rolling update：</li>
+</ol>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">docker service update --image redis:3.0.7 redis</span><br></pre></td></tr></table></figure>
+<ol start="3">
+<li>透過 <code>inspect</code> 與 <code>ps</code> 指令觀察其更新情形：</li>
+</ol>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">docker service inspect --pretty redis</span><br></pre></td></tr></table></figure>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">ID:             0u6a4s31ybk7yw2wyvtikmu50</span><br><span class="line">Name:           redis</span><br><span class="line">Service Mode:   Replicated</span><br><span class="line"> Replicas:      3</span><br><span class="line">Placement:</span><br><span class="line"> Strategy:      Spread</span><br><span class="line">UpdateConfig:</span><br><span class="line"> Parallelism:   1</span><br><span class="line"> Delay:         10s</span><br><span class="line">ContainerSpec:</span><br><span class="line"> Image:         redis:3.0.7</span><br><span class="line">Resources:</span><br><span class="line">Endpoint Mode:  vip</span><br></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">docker service ps redis</span><br></pre></td></tr></table></figure>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">NAME                                   IMAGE        NODE       DESIRED STATE  CURRENT STATE            ERROR</span><br><span class="line">redis.1.dos1zffgeofhagnve8w864fco      redis:3.0.7  worker1    Running        Running 37 seconds</span><br><span class="line"> \_ redis.1.88rdo6pa52ki8oqx6dogf04fh  redis:3.0.6  worker2    Shutdown       Shutdown 56 seconds ago</span><br><span class="line">redis.2.9l3i4j85517skba5o7tn5m8g0      redis:3.0.7  worker2    Running        Running About a minute</span><br><span class="line"> \_ redis.2.66k185wilg8ele7ntu8f6nj6i  redis:3.0.6  worker1    Shutdown       Shutdown 2 minutes ago</span><br><span class="line">redis.3.egiuiqpzrdbxks3wxgn8qib1g      redis:3.0.7  worker1    Running        Running 48 seconds</span><br><span class="line"> \_ redis.3.ctzktfddb2tepkr45qcmqln04  redis:3.0.6  mmanager1  Shutdown       Shutdown 2 minutes ago</span><br></pre></td></tr></table></figure>
+<h2 id="References"><a href="#References" class="headerlink" title="References"></a>References</h2><ul>
+<li><a href="https://docs.docker.com/engine/swarm/swarm-tutorial/rolling-update/" target="_blank" rel="noopener">https://docs.docker.com/engine/swarm/swarm-tutorial/rolling-update/</a></li>
+</ul>
 
       
     </div>
@@ -395,6 +623,8 @@
 <nav id="pagination">
   
   
+    <a href="/page/2/" class="alignright next">Next</a>
+  
   <div class="clearfix"></div>
 </nav></div></div>
     <aside id="sidebar" class="alignright">
@@ -405,23 +635,41 @@
   <h3 class="title">Tags</h3>
   <ul class="entry">
   
+    <li><a href="/tags/bash/">bash</a><small>1</small></li>
+  
     <li><a href="/tags/development/">development</a><small>1</small></li>
   
-    <li><a href="/tags/docker/">docker</a><small>3</small></li>
+    <li><a href="/tags/disk/">disk</a><small>2</small></li>
   
-    <li><a href="/tags/etcd/">etcd</a><small>1</small></li>
+    <li><a href="/tags/docker/">docker</a><small>6</small></li>
   
-    <li><a href="/tags/linux/">linux</a><small>1</small></li>
+    <li><a href="/tags/docker-compose/">docker-compose</a><small>1</small></li>
   
-    <li><a href="/tags/overlay/">overlay</a><small>1</small></li>
+    <li><a href="/tags/etcd/">etcd</a><small>2</small></li>
+  
+    <li><a href="/tags/flannel/">flannel</a><small>1</small></li>
+  
+    <li><a href="/tags/gpt/">gpt</a><small>1</small></li>
+  
+    <li><a href="/tags/h-264/">h.264</a><small>1</small></li>
+  
+    <li><a href="/tags/linux/">linux</a><small>2</small></li>
+  
+    <li><a href="/tags/overlay/">overlay</a><small>3</small></li>
+  
+    <li><a href="/tags/ppp/">ppp</a><small>1</small></li>
   
     <li><a href="/tags/proxy/">proxy</a><small>1</small></li>
   
     <li><a href="/tags/saas/">saas</a><small>1</small></li>
   
-    <li><a href="/tags/swarm/">swarm</a><small>1</small></li>
+    <li><a href="/tags/safari/">safari</a><small>1</small></li>
   
-    <li><a href="/tags/vm/">vm</a><small>1</small></li>
+    <li><a href="/tags/swarm/">swarm</a><small>2</small></li>
+  
+    <li><a href="/tags/ubuntu/">ubuntu</a><small>1</small></li>
+  
+    <li><a href="/tags/vm/">vm</a><small>2</small></li>
   
   </ul>
 </div>
@@ -431,7 +679,7 @@
   </div>
   <footer id="footer" class="inner"><div class="alignleft">
   
-  &copy; 2018 xbddc
+  &copy; 2019 xbddc
   
 </div>
 <div class="clearfix"></div></footer>

@@ -1,0 +1,165 @@
+<!DOCTYPE HTML>
+<html>
+<head><meta name="generator" content="Hexo 3.8.0">
+  <meta charset="utf-8">
+  
+  <title>指定 docker-compose 選用的 subnet | Notebook</title>
+  <meta name="author" content="xbddc">
+  
+  <meta name="description" content="最近用到一些以 docker-compose 做為啟動服務方式的專案時，不小心因為它建立的 subnet 與我鏈路上的 private ip subnet 衝突，導致我就與 swarm 叢集斷線。於是上網找了幾個方案來避免用到這個 subnet：
+方案一：修改 host routing table一">
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+
+  <meta property="og:title" content="指定 docker-compose 選用的 subnet">
+  <meta property="og:site_name" content="Notebook">
+
+  
+    <meta property="og:image" content="">
+  
+
+  <link href="/favicon.png" rel="icon">
+  <link rel="alternate" href="/atom.xml" title="Notebook" type="application/atom+xml">
+  <link rel="stylesheet" href="/css/style.css" media="screen" type="text/css">
+  <!--[if lt IE 9]><script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script><![endif]-->
+  
+
+</head>
+</html>
+
+<body>
+  <header id="header" class="inner"><div class="alignleft">
+  <h1><a href="/">Notebook</a></h1>
+  <h2><a href="/"></a></h2>
+</div>
+<nav id="main-nav" class="alignright">
+  <ul>
+    
+      <li><a href="/">Home</a></li>
+    
+      <li><a href="/archives">Archives</a></li>
+    
+  </ul>
+  <div class="clearfix"></div>
+</nav>
+<div class="clearfix"></div>
+</header>
+  <div id="content" class="inner">
+    <div id="main-col" class="alignleft"><div id="wrapper"><article class="post">
+  
+  <div class="post-content">
+    <header>
+      
+        <div class="icon"></div>
+        <time datetime="2019-01-07T14:00:00.000Z"><a href="/2019/01/07/docker-compose-change-subnet/">2019-01-07</a></time>
+      
+      
+  
+    <h1 class="title">指定 docker-compose 選用的 subnet</h1>
+  
+
+    </header>
+    <div class="entry">
+      
+        <p>最近用到一些以 <code>docker-compose</code> 做為啟動服務方式的專案時，不小心因為它建立的 subnet 與我鏈路上的 private ip subnet 衝突，導致我就與 swarm 叢集斷線。於是上網找了幾個方案來避免用到這個 subnet：</p>
+<h2 id="方案一：修改-host-routing-table"><a href="#方案一：修改-host-routing-table" class="headerlink" title="方案一：修改 host routing table"></a>方案一：修改 host routing table</h2><p>一個簡單的方法，透過佔用某個 subnet，讓 <code>docker-compose</code> 無法選擇去使用它：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 跳過 172.19.0.0/16</span></span><br><span class="line">route add -net 172.19.0.0/16 gw 172.16.0.1</span><br></pre></td></tr></table></figure>
+<h2 id="方案二：修改-docker-compose-yml"><a href="#方案二：修改-docker-compose-yml" class="headerlink" title="方案二：修改 docker-compose.yml"></a>方案二：修改 docker-compose.yml</h2><p>透過在 <code>docker-compose.yml</code> 中指定欲使用的 subnet 設定來達到 (需 docker-compose.yml 標記 VERSION 3 以上)</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="string">version</span> <span class="string">'3'</span></span><br><span class="line"><span class="attr">services:</span></span><br><span class="line"><span class="attr">  nginx:</span></span><br><span class="line">    <span class="string">...</span></span><br><span class="line"><span class="attr">    networks:</span></span><br><span class="line"><span class="attr">      default:</span></span><br><span class="line"></span><br><span class="line"><span class="attr">networks:</span></span><br><span class="line"><span class="attr">  default:</span></span><br><span class="line"><span class="attr">    driver:</span> <span class="string">bridge</span></span><br><span class="line"><span class="attr">    ipam:</span></span><br><span class="line"><span class="attr">      driver:</span> <span class="string">default</span></span><br><span class="line"><span class="attr">      config:</span></span><br><span class="line">        <span class="comment"># 指定使用 172.28.0.0/16</span></span><br><span class="line"><span class="attr">        - subnet:</span> <span class="number">172.28</span><span class="number">.0</span><span class="number">.0</span><span class="string">/16</span></span><br></pre></td></tr></table></figure>
+<h2 id="References"><a href="#References" class="headerlink" title="References"></a>References</h2><ul>
+<li><a href="https://docs.docker.com/compose/compose-file/#ipam" target="_blank" rel="noopener">https://docs.docker.com/compose/compose-file/#ipam</a></li>
+<li><a href="https://github.com/docker/compose/issues/4336" target="_blank" rel="noopener">https://github.com/docker/compose/issues/4336</a></li>
+</ul>
+
+      
+    </div>
+    <footer>
+      
+        
+        
+  
+  <div class="tags">
+    <a href="/tags/docker/">docker</a>, <a href="/tags/docker-compose/">docker-compose</a>
+  </div>
+
+        
+      
+      <div class="clearfix"></div>
+    </footer>
+  </div>
+</article>
+
+
+<section id="comment">
+  <h1 class="title">Comments</h1>
+
+  
+</section>
+
+</div></div>
+    <aside id="sidebar" class="alignright">
+  
+
+  
+<div class="widget tag">
+  <h3 class="title">Tags</h3>
+  <ul class="entry">
+  
+    <li><a href="/tags/bash/">bash</a><small>1</small></li>
+  
+    <li><a href="/tags/development/">development</a><small>1</small></li>
+  
+    <li><a href="/tags/disk/">disk</a><small>2</small></li>
+  
+    <li><a href="/tags/docker/">docker</a><small>6</small></li>
+  
+    <li><a href="/tags/docker-compose/">docker-compose</a><small>1</small></li>
+  
+    <li><a href="/tags/etcd/">etcd</a><small>2</small></li>
+  
+    <li><a href="/tags/flannel/">flannel</a><small>1</small></li>
+  
+    <li><a href="/tags/gpt/">gpt</a><small>1</small></li>
+  
+    <li><a href="/tags/h-264/">h.264</a><small>1</small></li>
+  
+    <li><a href="/tags/linux/">linux</a><small>2</small></li>
+  
+    <li><a href="/tags/overlay/">overlay</a><small>3</small></li>
+  
+    <li><a href="/tags/ppp/">ppp</a><small>1</small></li>
+  
+    <li><a href="/tags/proxy/">proxy</a><small>1</small></li>
+  
+    <li><a href="/tags/saas/">saas</a><small>1</small></li>
+  
+    <li><a href="/tags/safari/">safari</a><small>1</small></li>
+  
+    <li><a href="/tags/swarm/">swarm</a><small>2</small></li>
+  
+    <li><a href="/tags/ubuntu/">ubuntu</a><small>1</small></li>
+  
+    <li><a href="/tags/vm/">vm</a><small>2</small></li>
+  
+  </ul>
+</div>
+
+</aside>
+    <div class="clearfix"></div>
+  </div>
+  <footer id="footer" class="inner"><div class="alignleft">
+  
+  &copy; 2019 xbddc
+  
+</div>
+<div class="clearfix"></div></footer>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+<script src="/js/jquery.imagesloaded.min.js"></script>
+<script src="/js/gallery.js"></script>
+
+
+
+
+</body>
+</html>

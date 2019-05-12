@@ -1,0 +1,171 @@
+<!DOCTYPE HTML>
+<html>
+<head><meta name="generator" content="Hexo 3.8.0">
+  <meta charset="utf-8">
+  
+  <title>Safari 中使用 video tag 的注意事項 | Notebook</title>
+  <meta name="author" content="xbddc">
+  
+  <meta name="description" content="前幾天遇到一個有趣的 issue，在不管是 Chrome, Firefox 等瀏覽器都能播放的 mp4 檔案，到了 Safari 卻顯示 Invalid Video 的情形。研究了一下發現其實存在不只一種原因，所以記錄一下：
+HTTP 的 partial content 協定[^1]現代的瀏覽器皆支">
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+
+  <meta property="og:title" content="Safari 中使用 video tag 的注意事項">
+  <meta property="og:site_name" content="Notebook">
+
+  
+    <meta property="og:image" content="">
+  
+
+  <link href="/favicon.png" rel="icon">
+  <link rel="alternate" href="/atom.xml" title="Notebook" type="application/atom+xml">
+  <link rel="stylesheet" href="/css/style.css" media="screen" type="text/css">
+  <!--[if lt IE 9]><script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script><![endif]-->
+  
+
+</head>
+</html>
+
+<body>
+  <header id="header" class="inner"><div class="alignleft">
+  <h1><a href="/">Notebook</a></h1>
+  <h2><a href="/"></a></h2>
+</div>
+<nav id="main-nav" class="alignright">
+  <ul>
+    
+      <li><a href="/">Home</a></li>
+    
+      <li><a href="/archives">Archives</a></li>
+    
+  </ul>
+  <div class="clearfix"></div>
+</nav>
+<div class="clearfix"></div>
+</header>
+  <div id="content" class="inner">
+    <div id="main-col" class="alignleft"><div id="wrapper"><article class="post">
+  
+  <div class="post-content">
+    <header>
+      
+        <div class="icon"></div>
+        <time datetime="2019-05-10T07:58:51.000Z"><a href="/2019/05/10/video-tag-in-safari/">2019-05-10</a></time>
+      
+      
+  
+    <h1 class="title">Safari 中使用 video tag 的注意事項</h1>
+  
+
+    </header>
+    <div class="entry">
+      
+        <p>前幾天遇到一個有趣的 issue，在不管是 Chrome, Firefox 等瀏覽器都能播放的 mp4 檔案，到了 Safari 卻顯示 Invalid Video 的情形。研究了一下發現其實存在不只一種原因，所以記錄一下：</p>
+<h2 id="HTTP-的-partial-content-協定-1"><a href="#HTTP-的-partial-content-協定-1" class="headerlink" title="HTTP 的 partial content 協定[^1]"></a>HTTP 的 partial content 協定[^1]</h2><p>現代的瀏覽器皆支援發送帶有 <code>Range: bytes=n-m</code> 的 header，在支援的伺服器端則回傳 <code>206 Partial Content</code> response 並帶上指定片段的檔案內容做為 payload，藉此在播放器中達到 playback seeking 功能。而 Safari 在這方面處理的邏輯與其他瀏覽器有一點點不同：若 response 所帶的 payload 超過 request 指定的長度，會被將之當成是 livestream 播放，然後馬上就噴掉了 …。</p>
+<p>Safari 期望的行為：</p>
+<ol>
+<li>以 <code>Range: bytes=0-1</code> 只要一個 byte 先問一次，得到 <code>Content-Range: bytes 0-1/500000</code>，得知總長度 <code>500000</code></li>
+<li>取回前 16K <code>Range: bytes=0-16383</code></li>
+<li>再問最後段的 16K <code>Range: bytes=483616-499999</code></li>
+<li>然後再取中間沒下載的部分：<code>Range: bytes=16384-483615</code></li>
+</ol>
+<p>如果任何一步出差錯了就直接 fail，尤其是 response 多送少送都不行。最近踩到的問題就是後端多送了更多的 data，在第一步就爆了 …。</p>
+<h2 id="MP4-中-h-264-宣告的-profile-level-與媒體內容格式不相符"><a href="#MP4-中-h-264-宣告的-profile-level-與媒體內容格式不相符" class="headerlink" title="MP4 中 h.264 宣告的 profile level 與媒體內容格式不相符"></a>MP4 中 h.264 宣告的 profile level 與媒體內容格式不相符</h2><p>如果壓制出來的 mp4 檔案中 profile 標明的 level[^2] 錯誤，也會導致 Safari (QuickTime) 採用不合適的 decoder 進行解碼，也會噴掉。如宣告 level=2.2 (即只支援到 720x480@15)，但實際影片解析度卻是 1280x720@30 時的這種情形。</p>
+<h2 id="References"><a href="#References" class="headerlink" title="References"></a>References</h2><ul>
+<li>[^1]: <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/206" target="_blank" rel="noopener">https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/206</a></li>
+<li>[^2]: <a href="https://en.wikipedia.org/wiki/H.264/MPEG-4_AVC#Levels" target="_blank" rel="noopener">https://en.wikipedia.org/wiki/H.264/MPEG-4_AVC#Levels</a></li>
+</ul>
+
+      
+    </div>
+    <footer>
+      
+        
+        
+  
+  <div class="tags">
+    <a href="/tags/safari/">safari</a>, <a href="/tags/h-264/">h.264</a>
+  </div>
+
+        
+      
+      <div class="clearfix"></div>
+    </footer>
+  </div>
+</article>
+
+
+<section id="comment">
+  <h1 class="title">Comments</h1>
+
+  
+</section>
+
+</div></div>
+    <aside id="sidebar" class="alignright">
+  
+
+  
+<div class="widget tag">
+  <h3 class="title">Tags</h3>
+  <ul class="entry">
+  
+    <li><a href="/tags/bash/">bash</a><small>1</small></li>
+  
+    <li><a href="/tags/development/">development</a><small>1</small></li>
+  
+    <li><a href="/tags/disk/">disk</a><small>2</small></li>
+  
+    <li><a href="/tags/docker/">docker</a><small>6</small></li>
+  
+    <li><a href="/tags/docker-compose/">docker-compose</a><small>1</small></li>
+  
+    <li><a href="/tags/etcd/">etcd</a><small>2</small></li>
+  
+    <li><a href="/tags/flannel/">flannel</a><small>1</small></li>
+  
+    <li><a href="/tags/gpt/">gpt</a><small>1</small></li>
+  
+    <li><a href="/tags/h-264/">h.264</a><small>1</small></li>
+  
+    <li><a href="/tags/linux/">linux</a><small>2</small></li>
+  
+    <li><a href="/tags/overlay/">overlay</a><small>3</small></li>
+  
+    <li><a href="/tags/ppp/">ppp</a><small>1</small></li>
+  
+    <li><a href="/tags/proxy/">proxy</a><small>1</small></li>
+  
+    <li><a href="/tags/saas/">saas</a><small>1</small></li>
+  
+    <li><a href="/tags/safari/">safari</a><small>1</small></li>
+  
+    <li><a href="/tags/swarm/">swarm</a><small>2</small></li>
+  
+    <li><a href="/tags/ubuntu/">ubuntu</a><small>1</small></li>
+  
+    <li><a href="/tags/vm/">vm</a><small>2</small></li>
+  
+  </ul>
+</div>
+
+</aside>
+    <div class="clearfix"></div>
+  </div>
+  <footer id="footer" class="inner"><div class="alignleft">
+  
+  &copy; 2019 xbddc
+  
+</div>
+<div class="clearfix"></div></footer>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+<script src="/js/jquery.imagesloaded.min.js"></script>
+<script src="/js/gallery.js"></script>
+
+
+
+
+</body>
+</html>

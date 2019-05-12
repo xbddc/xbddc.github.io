@@ -1,0 +1,162 @@
+<!DOCTYPE HTML>
+<html>
+<head><meta name="generator" content="Hexo 3.8.0">
+  <meta charset="utf-8">
+  
+  <title>Ubuntu 上的 PPPoE 自動重撥 | Notebook</title>
+  <meta name="author" content="xbddc">
+  
+  <meta name="description" content="今天早上 Hinet 線路有點問題，恢復後發現每個 VM 中的 pppd 噴了訊息之後都沒有自動重連：
+123456789Dec 26 10:15:53 mx01 pppd[778]: No response to 4 echo-requestsDec 26 10:15:53 mx01 pppd[7">
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+
+  <meta property="og:title" content="Ubuntu 上的 PPPoE 自動重撥">
+  <meta property="og:site_name" content="Notebook">
+
+  
+    <meta property="og:image" content="">
+  
+
+  <link href="/favicon.png" rel="icon">
+  <link rel="alternate" href="/atom.xml" title="Notebook" type="application/atom+xml">
+  <link rel="stylesheet" href="/css/style.css" media="screen" type="text/css">
+  <!--[if lt IE 9]><script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script><![endif]-->
+  
+
+</head>
+</html>
+
+<body>
+  <header id="header" class="inner"><div class="alignleft">
+  <h1><a href="/">Notebook</a></h1>
+  <h2><a href="/"></a></h2>
+</div>
+<nav id="main-nav" class="alignright">
+  <ul>
+    
+      <li><a href="/">Home</a></li>
+    
+      <li><a href="/archives">Archives</a></li>
+    
+  </ul>
+  <div class="clearfix"></div>
+</nav>
+<div class="clearfix"></div>
+</header>
+  <div id="content" class="inner">
+    <div id="main-col" class="alignleft"><div id="wrapper"><article class="post">
+  
+  <div class="post-content">
+    <header>
+      
+        <div class="icon"></div>
+        <time datetime="2018-12-26T14:00:00.000Z"><a href="/2018/12/26/pppoe-settings/">2018-12-26</a></time>
+      
+      
+  
+    <h1 class="title">Ubuntu 上的 PPPoE 自動重撥</h1>
+  
+
+    </header>
+    <div class="entry">
+      
+        <p>今天早上 Hinet 線路有點問題，恢復後發現每個 VM 中的 <code>pppd</code> 噴了訊息之後都沒有自動重連：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">Dec 26 10:15:53 mx01 pppd[778]: No response to 4 echo-requests</span><br><span class="line">Dec 26 10:15:53 mx01 pppd[778]: Serial link appears to be disconnected.</span><br><span class="line">Dec 26 10:15:53 mx01 pppd[778]: Connect time 2224.5 minutes.</span><br><span class="line">Dec 26 10:15:53 mx01 pppd[778]: Sent 137161190 bytes, received 206597813 bytes.</span><br><span class="line">Dec 26 10:15:53 mx01 pppd[778]: restoring old default route to eth0 [10.1.1.1]</span><br><span class="line">Dec 26 10:15:53 mx01 systemd-networkd[668]: ppp0: Lost carrier</span><br><span class="line">Dec 26 10:15:59 mx01 pppd[778]: Connection terminated.</span><br><span class="line">Dec 26 10:15:59 mx01 pppd[778]: Sent PADT</span><br><span class="line">Dec 26 10:15:59 mx01 pppd[778]: Modem hangup</span><br></pre></td></tr></table></figure>
+<p>研究一下設定檔發現有些地方需要做點調整，方法如下。</p>
+<p>編輯 <code>/etc/ppp/options</code>，修改幾個項目：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">lcp-echo-interval 20</span><br><span class="line">lcp-echo-failure 40000</span><br><span class="line">maxfail 0</span><br><span class="line">holdoff 10</span><br><span class="line">persist</span><br></pre></td></tr></table></figure>
+<p>完成後重新啟動 <code>pppd</code> 才會生效。</p>
+
+      
+    </div>
+    <footer>
+      
+        
+        
+  
+  <div class="tags">
+    <a href="/tags/ppp/">ppp</a>, <a href="/tags/ubuntu/">ubuntu</a>
+  </div>
+
+        
+      
+      <div class="clearfix"></div>
+    </footer>
+  </div>
+</article>
+
+
+<section id="comment">
+  <h1 class="title">Comments</h1>
+
+  
+</section>
+
+</div></div>
+    <aside id="sidebar" class="alignright">
+  
+
+  
+<div class="widget tag">
+  <h3 class="title">Tags</h3>
+  <ul class="entry">
+  
+    <li><a href="/tags/bash/">bash</a><small>1</small></li>
+  
+    <li><a href="/tags/development/">development</a><small>1</small></li>
+  
+    <li><a href="/tags/disk/">disk</a><small>2</small></li>
+  
+    <li><a href="/tags/docker/">docker</a><small>6</small></li>
+  
+    <li><a href="/tags/docker-compose/">docker-compose</a><small>1</small></li>
+  
+    <li><a href="/tags/etcd/">etcd</a><small>2</small></li>
+  
+    <li><a href="/tags/flannel/">flannel</a><small>1</small></li>
+  
+    <li><a href="/tags/gpt/">gpt</a><small>1</small></li>
+  
+    <li><a href="/tags/h-264/">h.264</a><small>1</small></li>
+  
+    <li><a href="/tags/linux/">linux</a><small>2</small></li>
+  
+    <li><a href="/tags/overlay/">overlay</a><small>3</small></li>
+  
+    <li><a href="/tags/ppp/">ppp</a><small>1</small></li>
+  
+    <li><a href="/tags/proxy/">proxy</a><small>1</small></li>
+  
+    <li><a href="/tags/saas/">saas</a><small>1</small></li>
+  
+    <li><a href="/tags/safari/">safari</a><small>1</small></li>
+  
+    <li><a href="/tags/swarm/">swarm</a><small>2</small></li>
+  
+    <li><a href="/tags/ubuntu/">ubuntu</a><small>1</small></li>
+  
+    <li><a href="/tags/vm/">vm</a><small>2</small></li>
+  
+  </ul>
+</div>
+
+</aside>
+    <div class="clearfix"></div>
+  </div>
+  <footer id="footer" class="inner"><div class="alignleft">
+  
+  &copy; 2019 xbddc
+  
+</div>
+<div class="clearfix"></div></footer>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+<script src="/js/jquery.imagesloaded.min.js"></script>
+<script src="/js/gallery.js"></script>
+
+
+
+
+</body>
+</html>

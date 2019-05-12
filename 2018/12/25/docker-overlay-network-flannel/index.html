@@ -1,0 +1,210 @@
+<!DOCTYPE HTML>
+<html>
+<head><meta name="generator" content="Hexo 3.8.0">
+  <meta charset="utf-8">
+  
+  <title>跨主機間的 Docker overlay network (使用 flannel) | Notebook</title>
+  <meta name="author" content="xbddc">
+  
+  <meta name="description" content="接續之前的主題，這裡說說另一種能讓不同主機間的 Docker container 互相溝通 (讓他們在同個網路底下) 的方式。
+透過 flannelflannel 最早是由 CoreOS 公司為 Kubernetes 所設計的 IPv4 Layer 3 網路服務，透過以 agent 的形式運作在各 ">
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+
+  <meta property="og:title" content="跨主機間的 Docker overlay network (使用 flannel)">
+  <meta property="og:site_name" content="Notebook">
+
+  
+    <meta property="og:image" content="">
+  
+
+  <link href="/favicon.png" rel="icon">
+  <link rel="alternate" href="/atom.xml" title="Notebook" type="application/atom+xml">
+  <link rel="stylesheet" href="/css/style.css" media="screen" type="text/css">
+  <!--[if lt IE 9]><script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script><![endif]-->
+  
+
+</head>
+</html>
+
+<body>
+  <header id="header" class="inner"><div class="alignleft">
+  <h1><a href="/">Notebook</a></h1>
+  <h2><a href="/"></a></h2>
+</div>
+<nav id="main-nav" class="alignright">
+  <ul>
+    
+      <li><a href="/">Home</a></li>
+    
+      <li><a href="/archives">Archives</a></li>
+    
+  </ul>
+  <div class="clearfix"></div>
+</nav>
+<div class="clearfix"></div>
+</header>
+  <div id="content" class="inner">
+    <div id="main-col" class="alignleft"><div id="wrapper"><article class="post">
+  
+  <div class="post-content">
+    <header>
+      
+        <div class="icon"></div>
+        <time datetime="2018-12-25T07:00:00.000Z"><a href="/2018/12/25/docker-overlay-network-flannel/">2018-12-25</a></time>
+      
+      
+  
+    <h1 class="title">跨主機間的 Docker overlay network (使用 flannel)</h1>
+  
+
+    </header>
+    <div class="entry">
+      
+        <p>接續之前的主題，這裡說說另一種能讓不同主機間的 Docker container 互相溝通 (讓他們在同個網路底下) 的方式。</p>
+<h2 id="透過-flannel"><a href="#透過-flannel" class="headerlink" title="透過 flannel"></a>透過 flannel</h2><p><code>flannel</code> 最早是由 CoreOS 公司為 Kubernetes 所設計的 IPv4 Layer 3 網路服務，透過以 agent 的形式運作在各 Docker node 中，將節點資訊透過 Kubernetes API 或 etcd 同步到其他節點，並操作本地 Linux Kernel 的 VXLAN (layer 3) 或 host-gw (layer 2) 網路設定，也可配合如 AWS, GCE, AliCloud 的架構使用。</p>
+<p>因我們沒有部署 Kubernetes，故下面我們需要先準備 etcd 分散式儲存服務：</p>
+<table>
+<thead>
+<tr>
+<th>hostname</th>
+<th>ip addr</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>sx01</td>
+<td>10.1.1.70</td>
+</tr>
+<tr>
+<td>sx02</td>
+<td>10.1.1.71</td>
+</tr>
+</tbody>
+</table>
+<p>我們先分別在 <code>sx01</code>, <code>sx02</code> 安裝 etcd</p>
+<ul>
+<li><code>sx01</code></li>
+</ul>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">wget https://github.com/coreos/etcd/releases/download/v3.0.12/etcd-v3.0.12-linux-amd64.tar.gz</span><br><span class="line">tar zxvf etcd-v3.0.12-linux-amd64.tar.gz</span><br><span class="line"><span class="built_in">cd</span> etcd-v3.0.12-linux-amd64</span><br><span class="line">nohup ./etcd --name sx01 --initial-advertise-peer-urls http://10.1.1.70:2380 \</span><br><span class="line">        --listen-peer-urls http://10.1.1.70:2380 \</span><br><span class="line">        --listen-client-urls http://10.1.1.70:2379,http://127.0.0.1:2379 \</span><br><span class="line">        --advertise-client-urls http://10.1.1.70:2379 \</span><br><span class="line">        --initial-cluster-token etcd-cluster \</span><br><span class="line">        --initial-cluster sx01=http://10.1.1.70:2380,sx02=http://10.1.1.71:2380 \</span><br><span class="line">        --initial-cluster-state new &amp;</span><br></pre></td></tr></table></figure>
+<ul>
+<li><code>sx02</code></li>
+</ul>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">wget https://github.com/coreos/etcd/releases/download/v3.0.12/etcd-v3.0.12-linux-amd64.tar.gz</span><br><span class="line">tar zxvf etcd-v3.0.12-linux-amd64.tar.gz</span><br><span class="line"><span class="built_in">cd</span> etcd-v3.0.12-linux-amd64</span><br><span class="line">nohup ./etcd --name sx02 --initial-advertise-peer-urls http://10.1.1.71:2380 \</span><br><span class="line">        --listen-peer-urls http://10.1.1.71:2380 \</span><br><span class="line">        --listen-client-urls http://10.1.1.71:2379,http://127.0.0.1:2379 \</span><br><span class="line">        --advertise-client-urls http://10.1.1.71:2379 \</span><br><span class="line">        --initial-cluster-token etcd-cluster \</span><br><span class="line">        --initial-cluster sx01=http://10.1.1.70:2380,sx02=http://10.1.1.71:2380 \</span><br><span class="line">        --initial-cluster-state new &amp;</span><br></pre></td></tr></table></figure>
+<p>透過在 <code>sx02</code> 輸入 <code>./etcdctl cluster-health</code> 我們可以確認 etcd 服務有正確啟動：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">member 21eca106efe4caee is healthy: got healthy result from http://10.1.1.70:2379</span><br><span class="line">member 8614974c83d1cc6d is healthy: got healthy result from http://10.1.1.71:2379</span><br></pre></td></tr></table></figure>
+<p>接著在各節點下載 <code>flanneld</code>：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">wget https://github.com/coreos/flannel/releases/download/v0.10.0/flanneld-amd64 &amp;&amp; chmod +x flanneld-amd64</span><br></pre></td></tr></table></figure>
+<p>在 <code>sx01</code> 我們編輯 flannel 的網路設定檔 <code>flannel-network-config.json</code>：</p>
+<figure class="highlight json"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">&#123;</span><br><span class="line">    <span class="attr">"Network"</span>: <span class="string">"10.0.0.0/8"</span>,</span><br><span class="line">    <span class="attr">"SubnetLen"</span>: <span class="number">20</span>,</span><br><span class="line">    <span class="attr">"SubnetMin"</span>: <span class="string">"10.10.0.0"</span>,</span><br><span class="line">    <span class="attr">"SubnetMax"</span>: <span class="string">"10.99.0.0"</span>,</span><br><span class="line">    <span class="attr">"Backend"</span>: &#123;</span><br><span class="line">        <span class="attr">"Type"</span>: <span class="string">"vxlan"</span>,</span><br><span class="line">        <span class="attr">"VNI"</span>: <span class="number">100</span>,</span><br><span class="line">        <span class="attr">"Port"</span>: <span class="number">8472</span></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>透過 <code>etcdctl</code> 發佈到 etcd 中：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">./etcdctl <span class="built_in">set</span> /coreos.com/network/config &lt; flannel-network-config.json</span><br></pre></td></tr></table></figure>
+<p>接著可以透過下面指令在 <code>sx02</code> 中看到一樣的內容：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">./etcdctl get /coreos.com/network/config</span><br></pre></td></tr></table></figure>
+<p>我們現在可以將各 Docker node 的 <code>flanneld</code> 跑起來了，它會為我們新增一 flannel.100 的網路介面，可透過 <code>ifconfig</code> 看到：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># sx01</span></span><br><span class="line">nohup sudo ./flanneld-amd64 -iface=10.1.1.70 &amp;</span><br><span class="line"></span><br><span class="line"><span class="comment"># sx02</span></span><br><span class="line">nohup sudo ./flanneld-amd64 -iface=10.1.1.71 &amp;</span><br></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#ifconfig flannel.100</span></span><br><span class="line">flannel.100 Link encap:Ethernet  HWaddr 92:70:f1:94:9a:f8</span><br><span class="line">          inet addr:10.15.48.0  Bcast:0.0.0.0  Mask:255.255.255.255</span><br><span class="line">          inet6 addr: fe80::9070:f1ff:fe94:9af8/64 Scope:Link</span><br><span class="line">          UP BROADCAST RUNNING MULTICAST  MTU:1450  Metric:1</span><br><span class="line">          RX packets:114 errors:0 dropped:0 overruns:0 frame:0</span><br><span class="line">          TX packets:113 errors:0 dropped:31 overruns:0 carrier:0</span><br><span class="line">          collisions:0 txqueuelen:0</span><br><span class="line">          RX bytes:9428 (9.4 KB)  TX bytes:9372 (9.3 KB)</span><br></pre></td></tr></table></figure>
+<p>最後我們只要將各自 <code>dockerd</code> 的啟動 script 修改一下，讓它可以使用 flannel 做為網路的底層服務：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">systemctl edit docker</span><br></pre></td></tr></table></figure>
+<p>會自動開啟編輯器，在當中填入</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">[Service]</span><br><span class="line">EnvironmentFile=/run/flannel/subnet.env</span><br><span class="line">ExecStart=</span><br><span class="line">ExecStart=/usr/bin/dockerd -H tcp://0.0.0.0:2375 -H unix:///var/run/docker.sock --bip=<span class="variable">$&#123;FLANNEL_SUBNET&#125;</span> --mtu=<span class="variable">$&#123;FLANNEL_MTU&#125;</span></span><br></pre></td></tr></table></figure>
+<p>再重啟 Docker 服務就完成了</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">systemctl restart docker</span><br></pre></td></tr></table></figure>
+<p>測試看看，應可正確 ping 到對方：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># sx01</span></span><br><span class="line">docker run -it --rm bash sh -c <span class="string">'ifconfig eth0; sleep 60'</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># sx02</span></span><br><span class="line">docker run -it --rm bash ping [上面看到的 ip]</span><br></pre></td></tr></table></figure>
+<h2 id="References"><a href="#References" class="headerlink" title="References"></a>References</h2><ul>
+<li><a href="https://docker-k8s-lab.readthedocs.io/en/latest/docker/docker-flannel.html" target="_blank" rel="noopener">https://docker-k8s-lab.readthedocs.io/en/latest/docker/docker-flannel.html</a></li>
+</ul>
+
+      
+    </div>
+    <footer>
+      
+        
+        
+  
+  <div class="tags">
+    <a href="/tags/docker/">docker</a>, <a href="/tags/etcd/">etcd</a>, <a href="/tags/overlay/">overlay</a>, <a href="/tags/flannel/">flannel</a>
+  </div>
+
+        
+      
+      <div class="clearfix"></div>
+    </footer>
+  </div>
+</article>
+
+
+<section id="comment">
+  <h1 class="title">Comments</h1>
+
+  
+</section>
+
+</div></div>
+    <aside id="sidebar" class="alignright">
+  
+
+  
+<div class="widget tag">
+  <h3 class="title">Tags</h3>
+  <ul class="entry">
+  
+    <li><a href="/tags/bash/">bash</a><small>1</small></li>
+  
+    <li><a href="/tags/development/">development</a><small>1</small></li>
+  
+    <li><a href="/tags/disk/">disk</a><small>2</small></li>
+  
+    <li><a href="/tags/docker/">docker</a><small>6</small></li>
+  
+    <li><a href="/tags/docker-compose/">docker-compose</a><small>1</small></li>
+  
+    <li><a href="/tags/etcd/">etcd</a><small>2</small></li>
+  
+    <li><a href="/tags/flannel/">flannel</a><small>1</small></li>
+  
+    <li><a href="/tags/gpt/">gpt</a><small>1</small></li>
+  
+    <li><a href="/tags/h-264/">h.264</a><small>1</small></li>
+  
+    <li><a href="/tags/linux/">linux</a><small>2</small></li>
+  
+    <li><a href="/tags/overlay/">overlay</a><small>3</small></li>
+  
+    <li><a href="/tags/ppp/">ppp</a><small>1</small></li>
+  
+    <li><a href="/tags/proxy/">proxy</a><small>1</small></li>
+  
+    <li><a href="/tags/saas/">saas</a><small>1</small></li>
+  
+    <li><a href="/tags/safari/">safari</a><small>1</small></li>
+  
+    <li><a href="/tags/swarm/">swarm</a><small>2</small></li>
+  
+    <li><a href="/tags/ubuntu/">ubuntu</a><small>1</small></li>
+  
+    <li><a href="/tags/vm/">vm</a><small>2</small></li>
+  
+  </ul>
+</div>
+
+</aside>
+    <div class="clearfix"></div>
+  </div>
+  <footer id="footer" class="inner"><div class="alignleft">
+  
+  &copy; 2019 xbddc
+  
+</div>
+<div class="clearfix"></div></footer>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+<script src="/js/jquery.imagesloaded.min.js"></script>
+<script src="/js/gallery.js"></script>
+
+
+
+
+</body>
+</html>

@@ -1,0 +1,187 @@
+<!DOCTYPE HTML>
+<html>
+<head><meta name="generator" content="Hexo 3.8.0">
+  <meta charset="utf-8">
+  
+  <title>不關機擴充 VM 的 GPT 磁碟格式空間 | Notebook</title>
+  <meta name="author" content="xbddc">
+  
+  <meta name="description" content="請搭配 https://xbddc.github.io/2018/12/21/expand-space-without-rebooting-vm/ 服用。
+操作步驟
+擴充 Raw Disk 磁碟大小
+確認 Linux 已偵測到變更
+
+12345# dmesg | tail[3362536.18997">
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+
+  <meta property="og:title" content="不關機擴充 VM 的 GPT 磁碟格式空間">
+  <meta property="og:site_name" content="Notebook">
+
+  
+    <meta property="og:image" content="">
+  
+
+  <link href="/favicon.png" rel="icon">
+  <link rel="alternate" href="/atom.xml" title="Notebook" type="application/atom+xml">
+  <link rel="stylesheet" href="/css/style.css" media="screen" type="text/css">
+  <!--[if lt IE 9]><script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script><![endif]-->
+  
+
+</head>
+</html>
+
+<body>
+  <header id="header" class="inner"><div class="alignleft">
+  <h1><a href="/">Notebook</a></h1>
+  <h2><a href="/"></a></h2>
+</div>
+<nav id="main-nav" class="alignright">
+  <ul>
+    
+      <li><a href="/">Home</a></li>
+    
+      <li><a href="/archives">Archives</a></li>
+    
+  </ul>
+  <div class="clearfix"></div>
+</nav>
+<div class="clearfix"></div>
+</header>
+  <div id="content" class="inner">
+    <div id="main-col" class="alignleft"><div id="wrapper"><article class="post">
+  
+  <div class="post-content">
+    <header>
+      
+        <div class="icon"></div>
+        <time datetime="2019-01-31T15:10:00.000Z"><a href="/2019/01/31/expand-gpt-without-rebooting-vm/">2019-01-31</a></time>
+      
+      
+  
+    <h1 class="title">不關機擴充 VM 的 GPT 磁碟格式空間</h1>
+  
+
+    </header>
+    <div class="entry">
+      
+        <p>請搭配 <a href="https://xbddc.github.io/2018/12/21/expand-space-without-rebooting-vm/">https://xbddc.github.io/2018/12/21/expand-space-without-rebooting-vm/</a> 服用。</p>
+<h2 id="操作步驟"><a href="#操作步驟" class="headerlink" title="操作步驟"></a>操作步驟</h2><ol>
+<li>擴充 Raw Disk 磁碟大小</li>
+<li>確認 Linux 已偵測到變更</li>
+</ol>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"># dmesg | tail</span><br><span class="line">[3362536.189973] virtio_blk virtio1: new size: 71720960 512-byte logical blocks (36.7 GB/34.2 GiB)</span><br><span class="line">[3362536.189984] vda: detected capacity change from 19541262336 to 36721131520</span><br><span class="line">[3362866.358221] EXT4-fs (vda1): resizing filesystem from 4742395 to 8936699 blocks</span><br><span class="line">[3362866.389273] EXT4-fs (vda1): resized filesystem to 8936699</span><br></pre></td></tr></table></figure>
+<ol start="3">
+<li>找到要 resize 的磁碟編號。注意只能是位於最末段的磁碟，如下的 vda1：</li>
+</ol>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"># df</span><br><span class="line">Filesystem     1K-blocks     Used Available Use% Mounted on</span><br><span class="line">...</span><br><span class="line">/dev/vda1       18318068 16648976   1652708  91% /</span><br><span class="line">...</span><br></pre></td></tr></table></figure>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"># sgdisk -p /dev/vda</span><br><span class="line">Disk /dev/vda: 38166527 sectors, 18.1 GiB</span><br><span class="line">Sector size (logical/physical): 512/512 bytes</span><br><span class="line">Disk identifier (GUID): 877716F7-31D0-4D56-A1ED-4D566EFE418E</span><br><span class="line">Partition table holds up to 128 entries</span><br><span class="line">Main partition table begins at sector 2 and ends at sector 33</span><br><span class="line">First usable sector is 34, last usable sector is 38166494</span><br><span class="line">Partitions will be aligned on 2048-sector boundaries</span><br><span class="line">Total free space is 2014 sectors (1007.0 KiB)</span><br><span class="line"></span><br><span class="line">Number  Start (sector)    End (sector)  Size       Code  Name</span><br><span class="line">   1          227328        38166494   18.0 GiB    8300</span><br><span class="line">  14            2048           10239   4.0 MiB     EF02</span><br><span class="line">  15           10240          227327   106.0 MiB   EF00</span><br></pre></td></tr></table></figure>
+<ol start="4">
+<li>刪除並重新建立第 1 個分割區，並更新 partition table 取得新的設定資訊</li>
+</ol>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"># sgdisk -d 1 /dev/vda </span><br><span class="line"># sgdisk -N 1 /dev/vda </span><br><span class="line"># partprobe /dev/vda</span><br></pre></td></tr></table></figure>
+<ol start="5">
+<li>最後就執行 <code>resize2fs</code> 調整 ext2 大小：</li>
+</ol>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"># resize2fs /dev/vda1</span><br><span class="line">resize2fs 1.44.1 (24-Mar-2018)</span><br><span class="line">Filesystem at /dev/vda1 is mounted on /; on-line resizing required</span><br><span class="line">old_desc_blocks = 3, new_desc_blocks = 5</span><br><span class="line">The filesystem on /dev/vda1 is now 8936699 (4k) blocks long.</span><br></pre></td></tr></table></figure>
+<ol start="6">
+<li>確認一下結果，可以發現使用率從原本的 91% 降至 49%：</li>
+</ol>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"># df</span><br><span class="line">Filesystem     1K-blocks     Used Available Use% Mounted on</span><br><span class="line">...</span><br><span class="line">/dev/vda1       34578052 16649988  17911680  49% /</span><br><span class="line">...</span><br></pre></td></tr></table></figure>
+<p>這樣就完成啦！</p>
+<h2 id="References"><a href="#References" class="headerlink" title="References"></a>References</h2><ul>
+<li><a href="https://superuser.com/questions/660309/live-resize-of-a-gpt-partition-on-linux" target="_blank" rel="noopener">https://superuser.com/questions/660309/live-resize-of-a-gpt-partition-on-linux</a></li>
+</ul>
+
+      
+    </div>
+    <footer>
+      
+        
+        
+  
+  <div class="tags">
+    <a href="/tags/vm/">vm</a>, <a href="/tags/gpt/">gpt</a>, <a href="/tags/disk/">disk</a>, <a href="/tags/linux/">linux</a>
+  </div>
+
+        
+      
+      <div class="clearfix"></div>
+    </footer>
+  </div>
+</article>
+
+
+<section id="comment">
+  <h1 class="title">Comments</h1>
+
+  
+</section>
+
+</div></div>
+    <aside id="sidebar" class="alignright">
+  
+
+  
+<div class="widget tag">
+  <h3 class="title">Tags</h3>
+  <ul class="entry">
+  
+    <li><a href="/tags/bash/">bash</a><small>1</small></li>
+  
+    <li><a href="/tags/development/">development</a><small>1</small></li>
+  
+    <li><a href="/tags/disk/">disk</a><small>2</small></li>
+  
+    <li><a href="/tags/docker/">docker</a><small>6</small></li>
+  
+    <li><a href="/tags/docker-compose/">docker-compose</a><small>1</small></li>
+  
+    <li><a href="/tags/etcd/">etcd</a><small>2</small></li>
+  
+    <li><a href="/tags/flannel/">flannel</a><small>1</small></li>
+  
+    <li><a href="/tags/gpt/">gpt</a><small>1</small></li>
+  
+    <li><a href="/tags/h-264/">h.264</a><small>1</small></li>
+  
+    <li><a href="/tags/linux/">linux</a><small>2</small></li>
+  
+    <li><a href="/tags/overlay/">overlay</a><small>3</small></li>
+  
+    <li><a href="/tags/ppp/">ppp</a><small>1</small></li>
+  
+    <li><a href="/tags/proxy/">proxy</a><small>1</small></li>
+  
+    <li><a href="/tags/saas/">saas</a><small>1</small></li>
+  
+    <li><a href="/tags/safari/">safari</a><small>1</small></li>
+  
+    <li><a href="/tags/swarm/">swarm</a><small>2</small></li>
+  
+    <li><a href="/tags/ubuntu/">ubuntu</a><small>1</small></li>
+  
+    <li><a href="/tags/vm/">vm</a><small>2</small></li>
+  
+  </ul>
+</div>
+
+</aside>
+    <div class="clearfix"></div>
+  </div>
+  <footer id="footer" class="inner"><div class="alignleft">
+  
+  &copy; 2019 xbddc
+  
+</div>
+<div class="clearfix"></div></footer>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+<script src="/js/jquery.imagesloaded.min.js"></script>
+<script src="/js/gallery.js"></script>
+
+
+
+
+</body>
+</html>

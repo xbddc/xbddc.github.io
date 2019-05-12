@@ -1,0 +1,179 @@
+<!DOCTYPE HTML>
+<html>
+<head><meta name="generator" content="Hexo 3.8.0">
+  <meta charset="utf-8">
+  
+  <title>不關機調整 VM 磁碟空間 | Notebook</title>
+  <meta name="author" content="xbddc">
+  
+  <meta name="description" content="在一些時候我們會遇到 VM 磁碟空間不足，又因為一些原因不方便將 VM 關機進行調整的窘境，其實只要透過下面的方法就可以達到不用關機調整磁碟空間：
+注意事項
+需使用可調整 Raw Disk 磁碟大小的 VM 軟體如 VMWare, VirtualBox, Proxmox 等
+VM 虛擬的磁碟控制器必">
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+
+  <meta property="og:title" content="不關機調整 VM 磁碟空間">
+  <meta property="og:site_name" content="Notebook">
+
+  
+    <meta property="og:image" content="">
+  
+
+  <link href="/favicon.png" rel="icon">
+  <link rel="alternate" href="/atom.xml" title="Notebook" type="application/atom+xml">
+  <link rel="stylesheet" href="/css/style.css" media="screen" type="text/css">
+  <!--[if lt IE 9]><script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script><![endif]-->
+  
+
+</head>
+</html>
+
+<body>
+  <header id="header" class="inner"><div class="alignleft">
+  <h1><a href="/">Notebook</a></h1>
+  <h2><a href="/"></a></h2>
+</div>
+<nav id="main-nav" class="alignright">
+  <ul>
+    
+      <li><a href="/">Home</a></li>
+    
+      <li><a href="/archives">Archives</a></li>
+    
+  </ul>
+  <div class="clearfix"></div>
+</nav>
+<div class="clearfix"></div>
+</header>
+  <div id="content" class="inner">
+    <div id="main-col" class="alignleft"><div id="wrapper"><article class="post">
+  
+  <div class="post-content">
+    <header>
+      
+        <div class="icon"></div>
+        <time datetime="2018-12-21T14:00:00.000Z"><a href="/2018/12/21/expand-space-without-rebooting-vm/">2018-12-21</a></time>
+      
+      
+  
+    <h1 class="title">不關機調整 VM 磁碟空間</h1>
+  
+
+    </header>
+    <div class="entry">
+      
+        <p>在一些時候我們會遇到 VM 磁碟空間不足，又因為一些原因不方便將 VM 關機進行調整的窘境，其實只要透過下面的方法就可以達到不用關機調整磁碟空間：</p>
+<h2 id="注意事項"><a href="#注意事項" class="headerlink" title="注意事項"></a>注意事項</h2><ul>
+<li>需使用可調整 Raw Disk 磁碟大小的 VM 軟體如 VMWare, VirtualBox, Proxmox 等</li>
+<li>VM 虛擬的磁碟控制器必須是 SCSI 介面</li>
+</ul>
+<h2 id="操作步驟"><a href="#操作步驟" class="headerlink" title="操作步驟"></a>操作步驟</h2><ol>
+<li>擴充 Raw Disk 磁碟大小</li>
+<li>在 Guest Linux 中找到磁碟所在的 SCSI 匯流排位置 (找到如下面的 2:0:0:0)</li>
+</ol>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"># dmesg | grep sda</span><br><span class="line">[    4.312047] sd 2:0:0:0: [sda] 41943040 512-byte logical blocks: (21.5 GB/20.0 GiB)</span><br><span class="line">[    4.313812] sd 2:0:0:0: [sda] Write Protect is off</span><br><span class="line">[    4.313817] sd 2:0:0:0: [sda] Mode Sense: 00 3a 00 00</span><br></pre></td></tr></table></figure>
+<ol start="3">
+<li>對該 SCSI 位置做 rescan</li>
+</ol>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">echo</span> 1 &gt; /sys/class/scsi_device/2\:0\:0\:0/device/rescan</span><br></pre></td></tr></table></figure>
+<ol start="4">
+<li>進行新磁區的分割, 如 fdisk 或 LVM 的 pv, vg, lv 系列指令</li>
+</ol>
+<p>使用 LVM 管理磁碟的話應該不會有太大問題，但若是採用調大 fdisk 中分割區大小的方式，編輯完儲存後還要記得執行 partprobe &amp;&amp; resize2fs /dev/sdaX 才會見效。</p>
+<h2 id="References"><a href="#References" class="headerlink" title="References"></a>References</h2><ul>
+<li><a href="https://communities.vmware.com/thread/492752" target="_blank" rel="noopener">https://communities.vmware.com/thread/492752</a></li>
+</ul>
+
+      
+    </div>
+    <footer>
+      
+        
+        
+  
+  <div class="tags">
+    <a href="/tags/vm/">vm</a>, <a href="/tags/disk/">disk</a>, <a href="/tags/linux/">linux</a>
+  </div>
+
+        
+      
+      <div class="clearfix"></div>
+    </footer>
+  </div>
+</article>
+
+
+<section id="comment">
+  <h1 class="title">Comments</h1>
+
+  
+</section>
+
+</div></div>
+    <aside id="sidebar" class="alignright">
+  
+
+  
+<div class="widget tag">
+  <h3 class="title">Tags</h3>
+  <ul class="entry">
+  
+    <li><a href="/tags/bash/">bash</a><small>1</small></li>
+  
+    <li><a href="/tags/development/">development</a><small>1</small></li>
+  
+    <li><a href="/tags/disk/">disk</a><small>2</small></li>
+  
+    <li><a href="/tags/docker/">docker</a><small>6</small></li>
+  
+    <li><a href="/tags/docker-compose/">docker-compose</a><small>1</small></li>
+  
+    <li><a href="/tags/etcd/">etcd</a><small>2</small></li>
+  
+    <li><a href="/tags/flannel/">flannel</a><small>1</small></li>
+  
+    <li><a href="/tags/gpt/">gpt</a><small>1</small></li>
+  
+    <li><a href="/tags/h-264/">h.264</a><small>1</small></li>
+  
+    <li><a href="/tags/linux/">linux</a><small>2</small></li>
+  
+    <li><a href="/tags/overlay/">overlay</a><small>3</small></li>
+  
+    <li><a href="/tags/ppp/">ppp</a><small>1</small></li>
+  
+    <li><a href="/tags/proxy/">proxy</a><small>1</small></li>
+  
+    <li><a href="/tags/saas/">saas</a><small>1</small></li>
+  
+    <li><a href="/tags/safari/">safari</a><small>1</small></li>
+  
+    <li><a href="/tags/swarm/">swarm</a><small>2</small></li>
+  
+    <li><a href="/tags/ubuntu/">ubuntu</a><small>1</small></li>
+  
+    <li><a href="/tags/vm/">vm</a><small>2</small></li>
+  
+  </ul>
+</div>
+
+</aside>
+    <div class="clearfix"></div>
+  </div>
+  <footer id="footer" class="inner"><div class="alignleft">
+  
+  &copy; 2019 xbddc
+  
+</div>
+<div class="clearfix"></div></footer>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+<script src="/js/jquery.imagesloaded.min.js"></script>
+<script src="/js/gallery.js"></script>
+
+
+
+
+</body>
+</html>

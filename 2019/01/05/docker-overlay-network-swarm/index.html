@@ -1,0 +1,167 @@
+<!DOCTYPE HTML>
+<html>
+<head><meta name="generator" content="Hexo 3.8.0">
+  <meta charset="utf-8">
+  
+  <title>跨主機間的 Docker overlay network (使用 swarm) | Notebook</title>
+  <meta name="author" content="xbddc">
+  
+  <meta name="description" content="若要使不同主機間的 Docker 中的 container 能互相溝通 (讓他們在同個網路底下) 有幾種方式，今天介紹一個最簡單的方式。
+透過 Docker Swarm隨著現在 Docker Swarm 越來越發達與普及，很多人是直接透過 Swarm 來做 container orchestrati">
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+
+  <meta property="og:title" content="跨主機間的 Docker overlay network (使用 swarm)">
+  <meta property="og:site_name" content="Notebook">
+
+  
+    <meta property="og:image" content="">
+  
+
+  <link href="/favicon.png" rel="icon">
+  <link rel="alternate" href="/atom.xml" title="Notebook" type="application/atom+xml">
+  <link rel="stylesheet" href="/css/style.css" media="screen" type="text/css">
+  <!--[if lt IE 9]><script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script><![endif]-->
+  
+
+</head>
+</html>
+
+<body>
+  <header id="header" class="inner"><div class="alignleft">
+  <h1><a href="/">Notebook</a></h1>
+  <h2><a href="/"></a></h2>
+</div>
+<nav id="main-nav" class="alignright">
+  <ul>
+    
+      <li><a href="/">Home</a></li>
+    
+      <li><a href="/archives">Archives</a></li>
+    
+  </ul>
+  <div class="clearfix"></div>
+</nav>
+<div class="clearfix"></div>
+</header>
+  <div id="content" class="inner">
+    <div id="main-col" class="alignleft"><div id="wrapper"><article class="post">
+  
+  <div class="post-content">
+    <header>
+      
+        <div class="icon"></div>
+        <time datetime="2019-01-05T14:00:00.000Z"><a href="/2019/01/05/docker-overlay-network-swarm/">2019-01-05</a></time>
+      
+      
+  
+    <h1 class="title">跨主機間的 Docker overlay network (使用 swarm)</h1>
+  
+
+    </header>
+    <div class="entry">
+      
+        <p>若要使不同主機間的 Docker 中的 container 能互相溝通 (讓他們在同個網路底下) 有幾種方式，今天介紹一個最簡單的方式。</p>
+<h2 id="透過-Docker-Swarm"><a href="#透過-Docker-Swarm" class="headerlink" title="透過 Docker Swarm"></a>透過 Docker Swarm</h2><p>隨著現在 Docker Swarm 越來越發達與普及，很多人是直接透過 Swarm 來做 container orchestration 的工具，做為跨主機的 container 群集。只要我們將各 Docker node 加入 Swarm 群集後，在 Swarm manager 角色的主機建立 overlay 網路，再以 docker service 指令集來建立服務，這些服務的容器間即可相互溝通。</p>
+<p>建立 overlay 網路：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">docker network create -d overlay --scope swarm my-network</span><br></pre></td></tr></table></figure>
+<p>透過 Docker swarm 在各 Docker node 部署同一 image 測試：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">docker service create --name <span class="built_in">test</span>-service --network my-network bash sleep 180</span><br><span class="line">docker service scale <span class="built_in">test</span>-service=2</span><br></pre></td></tr></table></figure>
+<p>各自從 container 取得 ip：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># sx01</span></span><br><span class="line">docker <span class="built_in">exec</span> -it `docker ps | grep <span class="built_in">test</span>-service | cut -d\  -f1` ifconfig</span><br><span class="line">eth0      Link encap:Ethernet  HWaddr 02:42:0A:00:00:38</span><br><span class="line">          inet addr:10.0.0.56  Bcast:10.0.0.255  Mask:255.255.255.0</span><br><span class="line">          UP BROADCAST RUNNING MULTICAST  MTU:1450  Metric:1</span><br><span class="line">          ...</span><br><span class="line"></span><br><span class="line"><span class="comment"># sx02</span></span><br><span class="line">docker <span class="built_in">exec</span> -it `docker ps | grep <span class="built_in">test</span>-service | cut -d\  -f1` ifconfig</span><br><span class="line">eth0      Link encap:Ethernet  HWaddr 02:42:0A:00:00:41</span><br><span class="line">          inet addr:10.0.0.52  Bcast:10.0.0.255  Mask:255.255.255.0</span><br><span class="line">          UP BROADCAST RUNNING MULTICAST  MTU:1450  Metric:1</span><br><span class="line">          ...</span><br></pre></td></tr></table></figure>
+<p>各自 container 可互相 <code>ping</code> 到對方：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># sx01</span></span><br><span class="line">docker <span class="built_in">exec</span> -it `docker ps | grep <span class="built_in">test</span>-service | cut -d\  -f1` ping 10.0.0.52</span><br><span class="line">PING 10.0.0.52 (10.0.0.52): 56 data bytes</span><br><span class="line">64 bytes from 10.0.0.52: seq=0 ttl=64 time=0.351 ms</span><br><span class="line">64 bytes from 10.0.0.52: seq=1 ttl=64 time=0.367 ms</span><br><span class="line">64 bytes from 10.0.0.52: seq=2 ttl=64 time=0.258 ms</span><br><span class="line">64 bytes from 10.0.0.52: seq=3 ttl=64 time=0.304 ms</span><br><span class="line"></span><br><span class="line"><span class="comment"># sx02</span></span><br><span class="line">docker <span class="built_in">exec</span> -it `docker ps | grep <span class="built_in">test</span>-service | cut -d\  -f1` ping 10.0.0.56</span><br><span class="line">PING 10.0.0.56 (10.0.0.56): 56 data bytes</span><br><span class="line">64 bytes from 10.0.0.56: seq=0 ttl=64 time=0.338 ms</span><br><span class="line">64 bytes from 10.0.0.56: seq=1 ttl=64 time=0.325 ms</span><br><span class="line">64 bytes from 10.0.0.56: seq=2 ttl=64 time=0.306 ms</span><br><span class="line">64 bytes from 10.0.0.56: seq=3 ttl=64 time=0.212 ms</span><br></pre></td></tr></table></figure>
+<p>收工！</p>
+
+      
+    </div>
+    <footer>
+      
+        
+        
+  
+  <div class="tags">
+    <a href="/tags/docker/">docker</a>, <a href="/tags/overlay/">overlay</a>, <a href="/tags/swarm/">swarm</a>
+  </div>
+
+        
+      
+      <div class="clearfix"></div>
+    </footer>
+  </div>
+</article>
+
+
+<section id="comment">
+  <h1 class="title">Comments</h1>
+
+  
+</section>
+
+</div></div>
+    <aside id="sidebar" class="alignright">
+  
+
+  
+<div class="widget tag">
+  <h3 class="title">Tags</h3>
+  <ul class="entry">
+  
+    <li><a href="/tags/bash/">bash</a><small>1</small></li>
+  
+    <li><a href="/tags/development/">development</a><small>1</small></li>
+  
+    <li><a href="/tags/disk/">disk</a><small>2</small></li>
+  
+    <li><a href="/tags/docker/">docker</a><small>6</small></li>
+  
+    <li><a href="/tags/docker-compose/">docker-compose</a><small>1</small></li>
+  
+    <li><a href="/tags/etcd/">etcd</a><small>2</small></li>
+  
+    <li><a href="/tags/flannel/">flannel</a><small>1</small></li>
+  
+    <li><a href="/tags/gpt/">gpt</a><small>1</small></li>
+  
+    <li><a href="/tags/h-264/">h.264</a><small>1</small></li>
+  
+    <li><a href="/tags/linux/">linux</a><small>2</small></li>
+  
+    <li><a href="/tags/overlay/">overlay</a><small>3</small></li>
+  
+    <li><a href="/tags/ppp/">ppp</a><small>1</small></li>
+  
+    <li><a href="/tags/proxy/">proxy</a><small>1</small></li>
+  
+    <li><a href="/tags/saas/">saas</a><small>1</small></li>
+  
+    <li><a href="/tags/safari/">safari</a><small>1</small></li>
+  
+    <li><a href="/tags/swarm/">swarm</a><small>2</small></li>
+  
+    <li><a href="/tags/ubuntu/">ubuntu</a><small>1</small></li>
+  
+    <li><a href="/tags/vm/">vm</a><small>2</small></li>
+  
+  </ul>
+</div>
+
+</aside>
+    <div class="clearfix"></div>
+  </div>
+  <footer id="footer" class="inner"><div class="alignleft">
+  
+  &copy; 2019 xbddc
+  
+</div>
+<div class="clearfix"></div></footer>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+<script src="/js/jquery.imagesloaded.min.js"></script>
+<script src="/js/gallery.js"></script>
+
+
+
+
+</body>
+</html>

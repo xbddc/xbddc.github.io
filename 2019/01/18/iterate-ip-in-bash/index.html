@@ -3,13 +3,16 @@
 <head><meta name="generator" content="Hexo 3.8.0">
   <meta charset="utf-8">
   
-  <title>linux | Notebook</title>
+  <title>在 Bash 中列舉 IP 清單 | Notebook</title>
   <meta name="author" content="xbddc">
+  
+  <meta name="description" content="12printf -v ip_list &#39;%s,&#39; 10.1.&amp;#123;1..255&amp;#125;.&amp;#123;1..255&amp;#125;ip_list=$&amp;#123;ip_list%,&amp;#125; # 去除最後的 ,
+最近在 shell 環境時常需要設定 http_proxy 或 https_pro">
   
   
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 
-  
+  <meta property="og:title" content="在 Bash 中列舉 IP 清單">
   <meta property="og:site_name" content="Notebook">
 
   
@@ -43,37 +46,51 @@
 <div class="clearfix"></div>
 </header>
   <div id="content" class="inner">
-    <div id="main-col" class="alignleft"><div id="wrapper">
-<h2 class="archive-title tag">linux</h2>
+    <div id="main-col" class="alignleft"><div id="wrapper"><article class="post">
+  
+  <div class="post-content">
+    <header>
+      
+        <div class="icon"></div>
+        <time datetime="2019-01-18T05:14:57.000Z"><a href="/2019/01/18/iterate-ip-in-bash/">2019-01-18</a></time>
+      
+      
+  
+    <h1 class="title">在 Bash 中列舉 IP 清單</h1>
+  
 
+    </header>
+    <div class="entry">
+      
+        <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">printf</span> -v ip_list <span class="string">'%s,'</span> 10.1.&#123;1..255&#125;.&#123;1..255&#125;</span><br><span class="line">ip_list=<span class="variable">$&#123;ip_list%,&#125;</span> <span class="comment"># 去除最後的 ,</span></span><br></pre></td></tr></table></figure>
+<p>最近在 shell 環境時常需要設定 <code>http_proxy</code> 或 <code>https_proxy</code> 來透過 proxy server 進行連線，若有需要排除的 ip，則設定 <code>no_proxy</code> 這個環境變數來排除，這時如果要排除整個 subnet，就只能一個一個 IP 列舉了，使用上面的方法就可以輕鬆辦到。最後再 assign 給 <code>no_proxy</code> 即可：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">export</span> no_proxy=<span class="variable">$ip_list</span></span><br></pre></td></tr></table></figure>
 
-  <div class="archive">
-    
-      <article class="post">
-        <div class="post-content">
-          <header>
-            <div class="icon"></div>
-            <time datetime="2019-01-31T15:10:00.000Z"><a href="/2019/01/31/expand-gpt-without-rebooting-vm/">2019-01-31</a></time>
-            
-              <h1 class="title"><a href="/2019/01/31/expand-gpt-without-rebooting-vm/">不關機擴充 VM 的 GPT 磁碟格式空間</a></h1>
-            
-          </header>
-        </div>
-      </article>
-    
-      <article class="post">
-        <div class="post-content">
-          <header>
-            <div class="icon"></div>
-            <time datetime="2018-12-21T14:00:00.000Z"><a href="/2018/12/21/expand-space-without-rebooting-vm/">2018-12-21</a></time>
-            
-              <h1 class="title"><a href="/2018/12/21/expand-space-without-rebooting-vm/">不關機調整 VM 磁碟空間</a></h1>
-            
-          </header>
-        </div>
-      </article>
-    
+      
+    </div>
+    <footer>
+      
+        
+        
+  
+  <div class="tags">
+    <a href="/tags/bash/">bash</a>
   </div>
+
+        
+      
+      <div class="clearfix"></div>
+    </footer>
+  </div>
+</article>
+
+
+<section id="comment">
+  <h1 class="title">Comments</h1>
+
+  
+</section>
+
 </div></div>
     <aside id="sidebar" class="alignright">
   

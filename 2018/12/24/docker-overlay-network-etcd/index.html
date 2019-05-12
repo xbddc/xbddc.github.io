@@ -52,7 +52,7 @@
     <header>
       
         <div class="icon"></div>
-        <time datetime="2018-12-24T14:49:58.475Z"><a href="/2018/12/24/docker-overlay-network-etcd/">2018-12-24</a></time>
+        <time datetime="2018-12-24T14:00:00.000Z"><a href="/2018/12/24/docker-overlay-network-etcd/">2018-12-24</a></time>
       
       
   
@@ -111,7 +111,7 @@
 <p>同時在 <code>sx02</code> 我們可以發現 <code>test_net</code> 也已自動出現：</p>
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># docker network ls</span></span><br><span class="line">NETWORK ID          NAME                DRIVER              SCOPE</span><br><span class="line">c9947d4c3669        bridge              bridge              <span class="built_in">local</span></span><br><span class="line">3d430f3338a2        test_net            overlay             global</span><br><span class="line">fa5168034de1        host                host                <span class="built_in">local</span></span><br><span class="line">c2ca34abec2a        none                null                <span class="built_in">local</span></span><br></pre></td></tr></table></figure>
 <p>再來只要我們在任意 Docker node 執行 container 時加上 <code>--net test_net</code> 參數，即可為 container 增加一互相連通的網路介面 (eth1)。</p>
-<h2 id="透過-Docker-swarm"><a href="#透過-Docker-swarm" class="headerlink" title="透過 Docker swarm"></a>透過 Docker swarm</h2><h2 id="透過-Flannel"><a href="#透過-Flannel" class="headerlink" title="透過 Flannel"></a>透過 Flannel</h2><h2 id="References"><a href="#References" class="headerlink" title="References"></a>References</h2><ul>
+<h2 id="References"><a href="#References" class="headerlink" title="References"></a>References</h2><ul>
 <li><a href="https://docker-k8s-lab.readthedocs.io/en/latest/docker/docker-etcd.html" target="_blank" rel="noopener">https://docker-k8s-lab.readthedocs.io/en/latest/docker/docker-etcd.html</a></li>
 </ul>
 
@@ -149,23 +149,41 @@
   <h3 class="title">Tags</h3>
   <ul class="entry">
   
+    <li><a href="/tags/bash/">bash</a><small>1</small></li>
+  
     <li><a href="/tags/development/">development</a><small>1</small></li>
   
-    <li><a href="/tags/docker/">docker</a><small>3</small></li>
+    <li><a href="/tags/disk/">disk</a><small>2</small></li>
   
-    <li><a href="/tags/etcd/">etcd</a><small>1</small></li>
+    <li><a href="/tags/docker/">docker</a><small>6</small></li>
   
-    <li><a href="/tags/linux/">linux</a><small>1</small></li>
+    <li><a href="/tags/docker-compose/">docker-compose</a><small>1</small></li>
   
-    <li><a href="/tags/overlay/">overlay</a><small>1</small></li>
+    <li><a href="/tags/etcd/">etcd</a><small>2</small></li>
+  
+    <li><a href="/tags/flannel/">flannel</a><small>1</small></li>
+  
+    <li><a href="/tags/gpt/">gpt</a><small>1</small></li>
+  
+    <li><a href="/tags/h-264/">h.264</a><small>1</small></li>
+  
+    <li><a href="/tags/linux/">linux</a><small>2</small></li>
+  
+    <li><a href="/tags/overlay/">overlay</a><small>3</small></li>
+  
+    <li><a href="/tags/ppp/">ppp</a><small>1</small></li>
   
     <li><a href="/tags/proxy/">proxy</a><small>1</small></li>
   
     <li><a href="/tags/saas/">saas</a><small>1</small></li>
   
-    <li><a href="/tags/swarm/">swarm</a><small>1</small></li>
+    <li><a href="/tags/safari/">safari</a><small>1</small></li>
   
-    <li><a href="/tags/vm/">vm</a><small>1</small></li>
+    <li><a href="/tags/swarm/">swarm</a><small>2</small></li>
+  
+    <li><a href="/tags/ubuntu/">ubuntu</a><small>1</small></li>
+  
+    <li><a href="/tags/vm/">vm</a><small>2</small></li>
   
   </ul>
 </div>
@@ -175,7 +193,7 @@
   </div>
   <footer id="footer" class="inner"><div class="alignleft">
   
-  &copy; 2018 xbddc
+  &copy; 2019 xbddc
   
 </div>
 <div class="clearfix"></div></footer>

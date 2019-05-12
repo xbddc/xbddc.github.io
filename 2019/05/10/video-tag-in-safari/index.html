@@ -7,7 +7,7 @@
   <meta name="author" content="xbddc">
   
   <meta name="description" content="前幾天遇到一個有趣的 issue，在不管是 Chrome, Firefox 等瀏覽器都能播放的 mp4 檔案，到了 Safari 卻顯示 Invalid Video 的情形。研究了一下發現其實存在不只一種原因，所以記錄一下：
-HTTP 的 partial content 協定[^1]現代的瀏覽器皆支">
+HTTP 的 partial content 協定現代的瀏覽器皆支援發送帶">
   
   
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
@@ -63,7 +63,7 @@ HTTP 的 partial content 協定[^1]現代的瀏覽器皆支">
     <div class="entry">
       
         <p>前幾天遇到一個有趣的 issue，在不管是 Chrome, Firefox 等瀏覽器都能播放的 mp4 檔案，到了 Safari 卻顯示 Invalid Video 的情形。研究了一下發現其實存在不只一種原因，所以記錄一下：</p>
-<h2 id="HTTP-的-partial-content-協定-1"><a href="#HTTP-的-partial-content-協定-1" class="headerlink" title="HTTP 的 partial content 協定[^1]"></a>HTTP 的 partial content 協定[^1]</h2><p>現代的瀏覽器皆支援發送帶有 <code>Range: bytes=n-m</code> 的 header，在支援的伺服器端則回傳 <code>206 Partial Content</code> response 並帶上指定片段的檔案內容做為 payload，藉此在播放器中達到 playback seeking 功能。而 Safari 在這方面處理的邏輯與其他瀏覽器有一點點不同：若 response 所帶的 payload 超過 request 指定的長度，會被將之當成是 livestream 播放，然後馬上就噴掉了 …。</p>
+<h2 id="HTTP-的-partial-content-協定"><a href="#HTTP-的-partial-content-協定" class="headerlink" title="HTTP 的 partial content 協定"></a>HTTP 的 partial content 協定</h2><p>現代的瀏覽器皆支援發送帶有 <code>Range: bytes=n-m</code> 的 header，在支援的伺服器端則回傳 <code>206 Partial Content</code> response 並帶上指定片段的檔案內容做為 payload，藉此在播放器中達到 playback seeking 功能。而 Safari 在這方面處理的邏輯與其他瀏覽器有一點點不同：若 response 所帶的 payload 超過 request 指定的長度，會被將之當成是 livestream 播放，然後馬上就噴掉了 …。</p>
 <p>Safari 期望的行為：</p>
 <ol>
 <li>以 <code>Range: bytes=0-1</code> 只要一個 byte 先問一次，得到 <code>Content-Range: bytes 0-1/500000</code>，得知總長度 <code>500000</code></li>
@@ -72,10 +72,10 @@ HTTP 的 partial content 協定[^1]現代的瀏覽器皆支">
 <li>然後再取中間沒下載的部分：<code>Range: bytes=16384-483615</code></li>
 </ol>
 <p>如果任何一步出差錯了就直接 fail，尤其是 response 多送少送都不行。最近踩到的問題就是後端多送了更多的 data，在第一步就爆了 …。</p>
-<h2 id="MP4-中-h-264-宣告的-profile-level-與媒體內容格式不相符"><a href="#MP4-中-h-264-宣告的-profile-level-與媒體內容格式不相符" class="headerlink" title="MP4 中 h.264 宣告的 profile level 與媒體內容格式不相符"></a>MP4 中 h.264 宣告的 profile level 與媒體內容格式不相符</h2><p>如果壓制出來的 mp4 檔案中 profile 標明的 level[^2] 錯誤，也會導致 Safari (QuickTime) 採用不合適的 decoder 進行解碼，也會噴掉。如宣告 level=2.2 (即只支援到 720x480@15)，但實際影片解析度卻是 1280x720@30 時的這種情形。</p>
+<h2 id="MP4-中-h-264-宣告的-profile-level-與媒體內容格式不相符"><a href="#MP4-中-h-264-宣告的-profile-level-與媒體內容格式不相符" class="headerlink" title="MP4 中 h.264 宣告的 profile level 與媒體內容格式不相符"></a>MP4 中 h.264 宣告的 profile level 與媒體內容格式不相符</h2><p>如果壓制出來的 mp4 檔案中 profile 標明的 level 錯誤，也會導致 Safari (QuickTime) 採用不合適的 decoder 進行解碼，也會噴掉。如宣告 level=2.2 (即只支援到 720x480@15)，但實際影片解析度卻是 1280x720@30 時的這種情形。</p>
 <h2 id="References"><a href="#References" class="headerlink" title="References"></a>References</h2><ul>
-<li>[^1]: <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/206" target="_blank" rel="noopener">https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/206</a></li>
-<li>[^2]: <a href="https://en.wikipedia.org/wiki/H.264/MPEG-4_AVC#Levels" target="_blank" rel="noopener">https://en.wikipedia.org/wiki/H.264/MPEG-4_AVC#Levels</a></li>
+<li><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/206" target="_blank" rel="noopener">https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/206</a></li>
+<li><a href="https://en.wikipedia.org/wiki/H.264/MPEG-4_AVC#Levels" target="_blank" rel="noopener">https://en.wikipedia.org/wiki/H.264/MPEG-4_AVC#Levels</a></li>
 </ul>
 
       

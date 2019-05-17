@@ -97,6 +97,45 @@
     <header>
       
         <div class="icon"></div>
+        <time datetime="2019-02-09T04:00:00.000Z"><a href="/2019/02/09/kafka-retention-ms/">2019-02-09</a></time>
+      
+      
+  
+    <h1 class="title"><a href="/2019/02/09/kafka-retention-ms/">Kafka message 保留時間</a></h1>
+  
+
+    </header>
+    <div class="entry">
+      
+        <p>如果你的 kafka topic 的 message 沒有長期保存的價值，又不想它持續佔用大量硬碟空間的話，可以針對 topic 做下面設定：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"># /path/to/kafka-root/bin/kafka-configs.sh --zookeeper zookeeper:2181 \</span><br><span class="line">  --entity-type topics --entity-name MY-TOPIC --alter \</span><br><span class="line">  --add-config retention.ms=$((86400 * 3 * 1000))</span><br><span class="line"></span><br><span class="line">Completed Updating config for entity: topic &apos;MY-TOPIC&apos;.</span><br></pre></td></tr></table></figure>
+<p>就能將 <code>MY-TOPIC</code> 這個 topic 保留時間縮短為 3 天 (預設是 7 天)，超過時間的 message 將會被陸續刪除。</p>
+<p>相關的 config 也要注意，如 <code>cleanup.policy</code> 需為 <code>delete</code>，或你也可以設定 <code>retention.bytes</code> 依使用空間做出限制。</p>
+<h2 id="References"><a href="#References" class="headerlink" title="References"></a>References</h2><ul>
+<li><a href="https://kafka.apache.org/documentation/#topicconfigs" target="_blank" rel="noopener">https://kafka.apache.org/documentation/#topicconfigs</a></li>
+</ul>
+
+      
+    </div>
+    <footer>
+      
+        
+        
+      
+      <div class="clearfix"></div>
+    </footer>
+  </div>
+</article>
+
+
+
+
+  <article class="post">
+  
+  <div class="post-content">
+    <header>
+      
+        <div class="icon"></div>
         <time datetime="2019-01-31T15:10:00.000Z"><a href="/2019/01/31/expand-gpt-without-rebooting-vm/">2019-01-31</a></time>
       
       
@@ -565,60 +604,6 @@
 
 
 
-  <article class="post">
-  
-  <div class="post-content">
-    <header>
-      
-        <div class="icon"></div>
-        <time datetime="2018-12-22T13:00:00.000Z"><a href="/2018/12/22/docker-rolling-update/">2018-12-22</a></time>
-      
-      
-  
-    <h1 class="title"><a href="/2018/12/22/docker-rolling-update/">對 Docker swarm 中 service 進行 rolling update</a></h1>
-  
-
-    </header>
-    <div class="entry">
-      
-        <p>當在 Docker swarm 群集中有更新版本的 docker image 要部署時，我們可以透過以下步驟進行：</p>
-<ol>
-<li>在 service 建立時，指定 update-delay 時間，讓 Docker 依照這個間隔依序下載新的 image 並部署(重啟 container)：</li>
-</ol>
-<blockquote>
-<p>如果要拉 private docker registry 的話，先 docker login 後傳遞 –with-registry-auth 參數在下面的指令</p>
-</blockquote>
-<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">docker service create \</span><br><span class="line">  --replicas 3 \</span><br><span class="line">  --name redis \</span><br><span class="line">  --update-delay 10s \</span><br><span class="line">  redis:3.0.6</span><br></pre></td></tr></table></figure>
-<ol start="2">
-<li>部署新版本時，使用 <code>update</code> 指令開始 rolling update：</li>
-</ol>
-<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">docker service update --image redis:3.0.7 redis</span><br></pre></td></tr></table></figure>
-<ol start="3">
-<li>透過 <code>inspect</code> 與 <code>ps</code> 指令觀察其更新情形：</li>
-</ol>
-<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">docker service inspect --pretty redis</span><br></pre></td></tr></table></figure>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">ID:             0u6a4s31ybk7yw2wyvtikmu50</span><br><span class="line">Name:           redis</span><br><span class="line">Service Mode:   Replicated</span><br><span class="line"> Replicas:      3</span><br><span class="line">Placement:</span><br><span class="line"> Strategy:      Spread</span><br><span class="line">UpdateConfig:</span><br><span class="line"> Parallelism:   1</span><br><span class="line"> Delay:         10s</span><br><span class="line">ContainerSpec:</span><br><span class="line"> Image:         redis:3.0.7</span><br><span class="line">Resources:</span><br><span class="line">Endpoint Mode:  vip</span><br></pre></td></tr></table></figure>
-<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">docker service ps redis</span><br></pre></td></tr></table></figure>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">NAME                                   IMAGE        NODE       DESIRED STATE  CURRENT STATE            ERROR</span><br><span class="line">redis.1.dos1zffgeofhagnve8w864fco      redis:3.0.7  worker1    Running        Running 37 seconds</span><br><span class="line"> \_ redis.1.88rdo6pa52ki8oqx6dogf04fh  redis:3.0.6  worker2    Shutdown       Shutdown 56 seconds ago</span><br><span class="line">redis.2.9l3i4j85517skba5o7tn5m8g0      redis:3.0.7  worker2    Running        Running About a minute</span><br><span class="line"> \_ redis.2.66k185wilg8ele7ntu8f6nj6i  redis:3.0.6  worker1    Shutdown       Shutdown 2 minutes ago</span><br><span class="line">redis.3.egiuiqpzrdbxks3wxgn8qib1g      redis:3.0.7  worker1    Running        Running 48 seconds</span><br><span class="line"> \_ redis.3.ctzktfddb2tepkr45qcmqln04  redis:3.0.6  mmanager1  Shutdown       Shutdown 2 minutes ago</span><br></pre></td></tr></table></figure>
-<h2 id="References"><a href="#References" class="headerlink" title="References"></a>References</h2><ul>
-<li><a href="https://docs.docker.com/engine/swarm/swarm-tutorial/rolling-update/" target="_blank" rel="noopener">https://docs.docker.com/engine/swarm/swarm-tutorial/rolling-update/</a></li>
-</ul>
-
-      
-    </div>
-    <footer>
-      
-        
-        
-      
-      <div class="clearfix"></div>
-    </footer>
-  </div>
-</article>
-
-
-
-
 
 <nav id="pagination">
   
@@ -652,6 +637,8 @@
     <li><a href="/tags/gpt/">gpt</a><small>1</small></li>
   
     <li><a href="/tags/h-264/">h.264</a><small>1</small></li>
+  
+    <li><a href="/tags/kafka/">kafka</a><small>1</small></li>
   
     <li><a href="/tags/linux/">linux</a><small>2</small></li>
   
